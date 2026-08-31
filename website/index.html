@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>me — a journal that knows when to stay quiet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;1,400&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F1F2F0; --surface:#FBFBFA; --ink:#26282B; --muted:#6B6F72;
+    --accent:#7FA08A; --accent-deep:#57735F; --ochre:#C6A063; --line:#E3E4E1;
+    --font-display:'Fraunces', Georgia, serif;
+    --font-ui:'Instrument Sans', system-ui, -apple-system, sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--font-ui); line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;}
+  img,svg{display:block; max-width:100%;}
+  .wrap{max-width:1120px; margin:0 auto; padding:0 28px;}
+  section{padding:88px 0;}
+  h1,h2,h3{font-family:var(--font-display); font-weight:600; line-height:1.15; margin:0;}
+  p{margin:0;}
+
+  /* ---------- nav ---------- */
+  header.nav{
+    position:sticky; top:0; z-index:50; background:rgba(241,242,240,.88);
+    backdrop-filter:blur(8px); border-bottom:1px solid var(--line);
+  }
+  .nav-inner{
+    max-width:1120px; margin:0 auto; padding:18px 28px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .logo{font-family:var(--font-display); font-size:22px; font-weight:600; letter-spacing:-.02em;}
+  .logo::before{content:"●"; color:var(--accent); font-size:11px; vertical-align:middle; margin-right:8px;}
+  nav.links{display:flex; align-items:center; gap:32px;}
+  nav.links a{
+    font-size:14.5px; color:var(--muted); text-decoration:none; font-weight:500;
+    transition:color .2s ease;
+  }
+  nav.links a:hover{color:var(--ink);}
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    padding:11px 22px; border-radius:999px; font-size:14.5px; font-weight:600;
+    text-decoration:none; cursor:pointer; border:1px solid transparent;
+    transition:transform .15s ease, box-shadow .15s ease, background .2s ease, border-color .2s ease;
+    white-space:nowrap;
+  }
+  .btn:hover{transform:translateY(-1px);}
+  .btn-primary{background:var(--accent-deep); color:var(--surface);}
+  .btn-primary:hover{box-shadow:0 8px 20px -8px rgba(87,115,95,.55);}
+  .btn-ghost{background:transparent; border-color:var(--line); color:var(--ink);}
+  .btn-ghost:hover{border-color:var(--accent);}
+  .btn-sm{padding:9px 18px; font-size:13.5px;}
+  .login-link{font-size:14.5px; font-weight:500; color:var(--muted); text-decoration:none;}
+  .login-link:hover{color:var(--ink);}
+
+  /* ---------- hero ---------- */
+  .hero{padding:100px 0 70px;}
+  .hero-grid{display:grid; grid-template-columns:1.05fr .95fr; gap:56px; align-items:center;}
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px; padding:6px 14px;
+    border:1px solid var(--line); border-radius:999px; font-size:13px;
+    font-weight:600; color:var(--accent-deep); background:var(--surface); margin-bottom:22px;
+  }
+  .eyebrow::before{content:"✦"; color:var(--ochre);}
+  .hero h1{font-size:52px; letter-spacing:-.02em; margin-bottom:22px;}
+  .hero h1 em{font-style:italic; color:var(--accent-deep);}
+  .hero p.lead{font-size:18px; color:var(--muted); max-width:480px; margin-bottom:34px;}
+  .hero-ctas{display:flex; align-items:center; gap:20px; flex-wrap:wrap;}
+  .hero .btn-primary{padding:14px 26px; font-size:15.5px;}
+  .microcopy{font-size:13px; color:var(--muted); margin-top:16px;}
+
+  /* hero visual: a stylized journal-entry / weekly-note card */
+  .hero-visual{position:relative;}
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:18px;
+    padding:26px; box-shadow:0 20px 50px -24px rgba(38,40,43,.25);
+  }
+  @keyframes floatCard{
+    0%,100%{ transform: translateY(0) rotate(var(--tilt,0deg)); }
+    50%{ transform: translateY(-9px) rotate(var(--tilt,0deg)); }
+  }
+  @keyframes floatChip{
+    0%,100%{ transform: translateY(0); }
+    50%{ transform: translateY(-4px); }
+  }
+  .journal-card{
+    --tilt:-2.5deg; transform:rotate(-2.5deg); position:relative; z-index:2;
+    animation: floatCard 6s ease-in-out infinite;
+  }
+  .journal-card .date{font-size:12.5px; color:var(--muted); font-weight:600; letter-spacing:.03em; text-transform:uppercase;}
+  .journal-card .entry-text{font-family:var(--font-display); font-size:16px; color:var(--ink); margin-top:12px; line-height:1.5;}
+  .journal-card .tags{display:flex; gap:8px; margin-top:18px; flex-wrap:wrap;}
+  .tag{
+    font-size:12px; padding:5px 11px; border-radius:999px; background:var(--paper); color:var(--muted);
+    border:1px solid var(--line); display:inline-block; animation: floatChip 4s ease-in-out infinite;
+  }
+  .tag:nth-child(1){ animation-duration:4s; animation-delay:0s; }
+  .tag:nth-child(2){ animation-duration:4.7s; animation-delay:.4s; }
+  .tag:nth-child(3){ animation-duration:5.3s; animation-delay:.8s; }
+  .tag.on{background:color-mix(in srgb, var(--accent) 16%, transparent); color:var(--accent-deep); border-color:transparent; font-weight:600;}
+
+  .weekly-card{
+    --tilt:3deg; position:absolute; right:-30px; bottom:-38px; width:220px;
+    transform:rotate(3deg); z-index:3; animation: floatCard 5s ease-in-out infinite; animation-delay:.6s;
+  }
+  .weekly-card .k{font-size:12px; font-weight:700; color:var(--accent-deep); text-transform:uppercase; letter-spacing:.04em;}
+  .weekly-card .msg{font-size:13.5px; margin-top:8px; color:var(--muted); line-height:1.5;}
+  .weekly-card .msg b{color:var(--ink);}
+  @media (prefers-reduced-motion: reduce){
+    .journal-card,.weekly-card,.tag{ animation:none !important; }
+  }
+
+  .blob{
+    position:absolute; width:340px; height:340px; border-radius:50%;
+    background:radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 70%);
+    top:-40px; right:-60px; z-index:1;
+  }
+
+  /* ---------- logos / trust strip ---------- */
+  .trust-strip{padding:34px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
+  .trust-inner{display:flex; align-items:center; justify-content:center; gap:44px; flex-wrap:wrap; font-size:13.5px; color:var(--muted); font-weight:500;}
+  .trust-inner span{display:flex; align-items:center; gap:8px;}
+  .trust-inner span::before{content:"✓"; color:var(--accent-deep); font-weight:700;}
+
+  /* ---------- problem / agitate ---------- */
+  .problem{}
+  .section-head{max-width:620px; margin:0 auto 56px; text-align:center;}
+  .kicker{
+    display:block; font-size:13px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--ochre); margin-bottom:14px;
+  }
+  .section-head h2{font-size:36px; letter-spacing:-.01em;}
+  .section-head p{color:var(--muted); font-size:16.5px; margin-top:16px;}
+
+  .compare{display:grid; grid-template-columns:1fr 1fr; gap:24px;}
+  .compare .card{padding:32px;}
+  .compare .card h3{font-size:19px; margin-bottom:18px; display:flex; align-items:center; gap:10px;}
+  .compare .card ul{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:14px;}
+  .compare .card li{font-size:15px; color:var(--muted); display:flex; gap:12px; align-items:flex-start;}
+  .card-bad{background:var(--surface); border-color:var(--line);}
+  .card-bad h3::before{content:"✕"; color:#B97159; font-weight:700;}
+  .card-bad li::before{content:"—"; color:var(--line); font-weight:700;}
+  .card-good{background:var(--accent-deep); border-color:var(--accent-deep); color:var(--surface);}
+  .card-good h3{color:var(--surface);}
+  .card-good h3::before{content:"✓"; color:var(--ochre); font-weight:700;}
+  .compare .card-good li{color:#FFFFFF;}
+  .card-good li::before{content:"✓"; color:var(--ochre); font-weight:700;}
+
+  /* ---------- how it works ---------- */
+  .steps{background:var(--surface); border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
+  .steps-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:36px; counter-reset:step;}
+  .step{position:relative; padding-top:8px;}
+  .step .num{
+    font-family:var(--font-display); font-size:44px; color:var(--line); font-weight:600; margin-bottom:10px;
+  }
+  .step h3{font-size:19px; margin-bottom:10px;}
+  .step p{color:var(--muted); font-size:15px;}
+
+  /* ---------- features ---------- */
+  .features-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:22px;}
+  .feature{
+    background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:28px;
+    transition:border-color .2s ease, transform .2s ease;
+  }
+  .feature:hover{border-color:var(--accent); transform:translateY(-2px);}
+  .feature .icon{
+    width:42px; height:42px; border-radius:11px; background:color-mix(in srgb, var(--accent) 18%, transparent);
+    display:flex; align-items:center; justify-content:center; margin-bottom:16px; font-size:19px;
+  }
+  .feature h3{font-size:16.5px; margin-bottom:8px;}
+  .feature p{font-size:14.5px; color:var(--muted);}
+
+  /* ---------- for therapists ---------- */
+  .therapist-band{
+    background:var(--ink); color:var(--surface); border-radius:24px; padding:56px;
+    display:grid; grid-template-columns:1.1fr .9fr; gap:40px; align-items:center;
+  }
+  .therapist-band .kicker{color:var(--ochre);}
+  .therapist-band h2{font-size:30px; color:var(--surface); margin-bottom:16px;}
+  .therapist-band p{color:rgba(251,251,250,.72); font-size:15.5px; margin-bottom:26px; max-width:460px;}
+  .therapist-band .btn-primary{background:var(--ochre); color:var(--ink);}
+  .therapist-mini{display:flex; flex-direction:column; gap:14px;}
+  .therapist-mini .row{
+    display:flex; align-items:center; gap:12px; background:rgba(251,251,250,.06);
+    border:1px solid rgba(251,251,250,.14); border-radius:12px; padding:14px 16px; font-size:13.5px;
+  }
+  .therapist-mini .row .dot{width:8px; height:8px; border-radius:50%; background:var(--accent); flex:0 0 auto;}
+
+  /* ---------- quotes ---------- */
+  .quotes-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:22px;}
+  .quote-card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:26px;}
+  .quote-card p.q{font-family:var(--font-display); font-size:16.5px; font-style:italic; line-height:1.5; margin-bottom:18px;}
+  .quote-card .who{display:flex; align-items:center; gap:10px; font-size:13px; color:var(--muted);}
+  .avatar{width:30px; height:30px; border-radius:50%; background:var(--accent); opacity:.7;}
+
+  /* ---------- privacy band ---------- */
+  .privacy{display:grid; grid-template-columns:repeat(4,1fr); gap:22px; text-align:center;}
+  .privacy .item{padding:8px;}
+  .privacy .item .big{font-family:var(--font-display); font-size:15px; font-weight:600; margin-bottom:6px;}
+  .privacy .item p{font-size:13.5px; color:var(--muted);}
+
+  /* ---------- final cta ---------- */
+  .final-cta{
+    text-align:center; background:linear-gradient(180deg, var(--surface), var(--paper));
+    border:1px solid var(--line); border-radius:24px; padding:72px 40px;
+  }
+  .final-cta h2{font-size:36px; margin-bottom:16px;}
+  .final-cta p{color:var(--muted); font-size:16px; margin-bottom:30px;}
+
+  /* ---------- footer ---------- */
+  footer{border-top:1px solid var(--line); padding:48px 0 32px;}
+  .footer-grid{display:grid; grid-template-columns:1.4fr repeat(3,1fr); gap:32px; margin-bottom:36px;}
+  .footer-grid .logo{margin-bottom:10px;}
+  .footer-grid p{color:var(--muted); font-size:14px; max-width:260px;}
+  .footer-col h4{font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:14px; font-weight:700;}
+  .footer-col a{display:block; font-size:14px; color:var(--ink); text-decoration:none; margin-bottom:10px; opacity:.85;}
+  .footer-col a:hover{opacity:1; color:var(--accent-deep);}
+  .footer-bottom{
+    display:flex; justify-content:space-between; align-items:center; padding-top:24px;
+    border-top:1px solid var(--line); font-size:13px; color:var(--muted); flex-wrap:wrap; gap:12px;
+  }
+
+  /* ---------- button tooltips: "this does..." on hover, like a game HUD ---------- */
+  [data-tip]{position:relative;}
+  [data-tip]::after{
+    content:attr(data-tip); position:absolute; bottom:calc(100% + 10px); left:50%;
+    transform:translateX(-50%) translateY(4px);
+    background:var(--ink); color:var(--surface); font-size:12px; font-weight:500;
+    padding:7px 12px; border-radius:8px; white-space:nowrap; z-index:20;
+    opacity:0; pointer-events:none; transition:opacity .16s ease, transform .16s ease;
+    box-shadow:0 10px 24px -10px rgba(0,0,0,.4);
+  }
+  [data-tip]::before{
+    content:""; position:absolute; bottom:calc(100% + 5px); left:50%; transform:translateX(-50%);
+    border:5px solid transparent; border-top-color:var(--ink); z-index:20;
+    opacity:0; transition:opacity .16s ease; pointer-events:none;
+  }
+  [data-tip]:hover::after,[data-tip]:focus-visible::after{opacity:1; transform:translateX(-50%) translateY(0);}
+  [data-tip]:hover::before,[data-tip]:focus-visible::before{opacity:1;}
+
+  /* ---------- live demo: mirrors the real dashboard's 3 themes ---------- */
+  .demo-shell{
+    --dpaper:#F1F2F0; --dsurface:#FBFBFA; --dink:#26282B; --dmuted:#6B6F72; --dline:#E3E4E1;
+    --daccent:#7FA08A; --daccent-deep:#57735F;
+    --dchart-1:#7FA08A; --dchart-2:#C6A063; --dchart-3:#6E8CA6; --dchart-4:#B97159; --dchart-5:#8C7093;
+    background:var(--dpaper); border:1px solid var(--dline); border-radius:22px; padding:30px;
+    transition:background .35s ease, border-color .35s ease;
+  }
+  .demo-shell[data-theme='paper']{
+    --dpaper:#F7F4EE; --dsurface:#FFFFFF; --dink:#33302A; --dmuted:#7A736A; --dline:#EAE5DC;
+    --daccent:#9A8C74; --daccent-deep:#6E624E;
+    --dchart-1:#9A8C74; --dchart-2:#B98B54; --dchart-3:#6E8CA6; --dchart-4:#B97159; --dchart-5:#8C7093;
+  }
+  .demo-shell[data-theme='night']{
+    --dpaper:#1B1D20; --dsurface:#232629; --dink:#E9E9E6; --dmuted:#9BA0A2; --dline:#31353A;
+    --daccent:#89AE97; --daccent-deep:#B6D0BF;
+    --dchart-1:#89AE97; --dchart-2:#D3AE74; --dchart-3:#86AEC9; --dchart-4:#D48F76; --dchart-5:#AD93B5;
+  }
+  .demo-toolbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;}
+  .demo-themes{display:flex; gap:10px;}
+  .theme-dot{
+    width:26px; height:26px; border-radius:50%; border:2px solid transparent; padding:0; cursor:pointer;
+    background:var(--dot); box-shadow:0 0 0 2px var(--dline) inset; transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .theme-dot:hover{transform:scale(1.12);}
+  .theme-dot.active{box-shadow:0 0 0 2px var(--dink);}
+  .demo-label{font-size:12.5px; color:var(--muted); font-weight:600;}
+  .demo-grid{display:grid; grid-template-columns:1.3fr 1fr; gap:20px;}
+  .demo-card{
+    background:var(--dsurface); border:1px solid var(--dline); border-radius:16px; padding:22px;
+    transition:background .35s ease, border-color .35s ease;
+  }
+  .demo-card-title{font-size:13px; font-weight:700; color:var(--dink); margin-bottom:14px;}
+  .bar-chart{width:100%; height:auto;}
+  .bar-chart rect{transition:fill .35s ease;}
+  .donut-wrap{position:relative; width:120px; height:120px; margin:0 auto 18px;}
+  .donut{
+    width:120px; height:120px; border-radius:50%;
+    background:conic-gradient(var(--dchart-1) 0% 42%, var(--dchart-2) 42% 73%, var(--dchart-3) 73% 90%, var(--dchart-4) 90% 100%);
+    transition:background .35s ease;
+  }
+  .donut-center{
+    position:absolute; inset:22px; border-radius:50%; background:var(--dsurface);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    transition:background .35s ease;
+  }
+  .donut-center b{font-family:'Fraunces',serif; font-size:20px; color:var(--dink);}
+  .donut-center span{font-size:10px; color:var(--dmuted);}
+  .donut-legend{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:9px;}
+  .donut-legend li{display:flex; align-items:center; gap:9px; font-size:12.5px; color:var(--dmuted);}
+  .donut-legend i{width:9px; height:9px; border-radius:50%; flex:0 0 auto;}
+  .demo-foot{display:flex; justify-content:center; margin-top:24px;}
+
+  @media (max-width:860px){
+    nav.links{display:none;}
+    .hero-grid{grid-template-columns:1fr;}
+    .hero h1{font-size:38px;}
+    .compare{grid-template-columns:1fr;}
+    .steps-grid{grid-template-columns:1fr;}
+    .features-grid{grid-template-columns:1fr 1fr;}
+    .quotes-grid{grid-template-columns:1fr;}
+    .privacy{grid-template-columns:1fr 1fr;}
+    .therapist-band{grid-template-columns:1fr; padding:36px 24px;}
+    .footer-grid{grid-template-columns:1fr 1fr;}
+    .weekly-card{position:static; margin-top:18px; transform:rotate(0); width:100%;}
+    .blob{display:none;}
+    .demo-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <div class="logo">me</div>
+    <nav class="links">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#therapists">For therapists</a>
+      <a href="#trust">Privacy</a>
+    </nav>
+    <div style="display:flex; align-items:center; gap:22px;">
+      <a href="#" class="login-link">Log in</a>
+      <a href="#" class="btn btn-primary btn-sm" data-tip="Opens a blank entry — no signup wall">Start journaling</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <span class="eyebrow">Journaling, without the spiral</span>
+        <h1>Write every day.<br>Hear from it <em>once a week.</em></h1>
+        <p class="lead">A private journal. An AI that notices quietly — and knows when to say nothing.</p>
+        <div class="hero-ctas">
+          <a href="#" class="btn btn-primary" data-tip="Free, 2 minutes, no card needed">Start journaling — it's free</a>
+          <a href="#how" class="btn btn-ghost" data-tip="Jumps to the 3-step walkthrough">See how it works</a>
+        </div>
+        <p class="microcopy">No credit card. Encrypted entries. Shared only if you choose to.</p>
+      </div>
+      <div class="hero-visual">
+        <div class="blob"></div>
+        <div class="card journal-card">
+          <div class="date">Tuesday, 8:42 PM</div>
+          <p class="entry-text">"Rough meeting today. Let it go by dinner — that felt new."</p>
+          <div class="tags">
+            <span class="tag on">stress · work</span>
+            <span class="tag">self-doubt</span>
+            <span class="tag">recovered quickly</span>
+          </div>
+        </div>
+        <div class="card weekly-card">
+          <div class="k">This week</div>
+          <p class="msg">Work stress: <b>3 times</b>. Bounced back faster than last week.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRUST STRIP -->
+  <div class="trust-strip">
+    <div class="wrap trust-inner">
+      <span>Entries encrypted at rest</span>
+      <span>Weekly reflection, not daily pressure</span>
+      <span>Nothing diagnostic, ever</span>
+      <span>Share only what you consent to</span>
+    </div>
+  </div>
+
+  <!-- PROBLEM / SOLUTION -->
+  <section class="problem">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">The problem with most journaling apps</span>
+        <h2>They want you checking in constantly. We don't.</h2>
+        <p>Most apps chase engagement — more prompts, more streaks. Overthinking isn't the goal.</p>
+      </div>
+      <div class="compare">
+        <div class="card card-bad">
+          <h3>Typical journaling apps</h3>
+          <ul>
+            <li>Push daily "insights" to keep you opening the app</li>
+            <li>Analyze every entry the moment you write it</li>
+            <li>Quietly position the AI as a stand-in therapist</li>
+            <li>Reward constant self-monitoring with streaks and badges</li>
+          </ul>
+        </div>
+        <div class="card card-good">
+          <h3>me</h3>
+          <ul>
+            <li>Reflects back on a calm, weekly rhythm — never daily</li>
+            <li>Aggregates patterns in code, not a chatbot guessing in the moment</li>
+            <li>Stays a companion that notices — never diagnoses, never pathologizes</li>
+            <li>Knows when to hold back instead of pushing you to dig deeper</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="steps" id="how">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">How it works</span>
+        <h2>Three steps. No performance required.</h2>
+      </div>
+      <div class="steps-grid">
+        <div class="step">
+          <div class="num">01</div>
+          <h3>Write, whenever</h3>
+          <p>No prompts to perform. "Whatever's here" is enough.</p>
+        </div>
+        <div class="step">
+          <div class="num">02</div>
+          <h3>Get a weekly reflection</h3>
+          <p>Recurring feelings and triggers, described plainly — never a verdict.</p>
+        </div>
+        <div class="step">
+          <div class="num">03</div>
+          <h3>Share, only if you want to</h3>
+          <p>Send a chosen summary to your therapist, element by element, with your consent.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIVE DEMO -->
+  <section id="demo">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">See it in action</span>
+        <h2>Your week, at a glance</h2>
+        <p>A real look at the weekly dashboard — try the theme.</p>
+      </div>
+      <div class="demo-shell" data-theme="dusk" id="demoShell">
+        <div class="demo-toolbar">
+          <div class="demo-themes" role="group" aria-label="Preview theme">
+            <button type="button" class="theme-dot active" data-theme-btn="dusk" data-tip="Warm default look" style="--dot:#7FA08A"></button>
+            <button type="button" class="theme-dot" data-theme-btn="paper" data-tip="Bright, high-contrast" style="--dot:#9A8C74"></button>
+            <button type="button" class="theme-dot" data-theme-btn="night" data-tip="Dark mode" style="--dot:#89AE97"></button>
+          </div>
+          <span class="demo-label">try the theme →</span>
+        </div>
+        <div class="demo-grid">
+          <div class="demo-card">
+            <div class="demo-card-title">This week's emotions</div>
+            <svg viewBox="0 0 260 130" class="bar-chart">
+              <g class="bars">
+                <rect x="10"  y="30" width="26" height="90" rx="6" style="fill:var(--dchart-1)"/>
+                <rect x="56"  y="55" width="26" height="65" rx="6" style="fill:var(--dchart-2)"/>
+                <rect x="102" y="15" width="26" height="105" rx="6" style="fill:var(--dchart-3)"/>
+                <rect x="148" y="70" width="26" height="50" rx="6" style="fill:var(--dchart-4)"/>
+                <rect x="194" y="40" width="26" height="80" rx="6" style="fill:var(--dchart-5)"/>
+              </g>
+              <g class="labels" font-family="Instrument Sans, sans-serif" font-size="10" fill="var(--dmuted)">
+                <text x="23"  y="128" text-anchor="middle">sad</text>
+                <text x="69"  y="128" text-anchor="middle">calm</text>
+                <text x="115" y="128" text-anchor="middle">doubt</text>
+                <text x="161" y="128" text-anchor="middle">joy</text>
+                <text x="207" y="128" text-anchor="middle">stress</text>
+              </g>
+            </svg>
+          </div>
+          <div class="demo-card demo-card-donut">
+            <div class="demo-card-title">Top triggers</div>
+            <div class="donut-wrap">
+              <div class="donut" id="demoDonut"></div>
+              <div class="donut-center"><b>26</b><span>moments</span></div>
+            </div>
+            <ul class="donut-legend">
+              <li><i style="background:var(--dchart-1)"></i>work · 42%</li>
+              <li><i style="background:var(--dchart-2)"></i>self-doubt · 31%</li>
+              <li><i style="background:var(--dchart-3)"></i>sleep · 17%</li>
+              <li><i style="background:var(--dchart-4)"></i>other · 10%</li>
+            </ul>
+          </div>
+        </div>
+        <div class="demo-foot">
+          <a href="#" class="btn btn-primary btn-sm" data-tip="Opens a sample dashboard, no signup">Try the live demo</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">What's inside</span>
+        <h2>Built to notice, not to nag</h2>
+        <p>What a calm companion actually does — not what maximizes screen time.</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature">
+          <div class="icon">✎</div>
+          <h3>Daily journaling</h3>
+          <p>A distraction-free space to write, with a calendar of your history.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">◐</div>
+          <h3>Pattern recognition</h3>
+          <p>Emotions and triggers extracted per entry, aggregated over time.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">✧</div>
+          <h3>A coach that holds back</h3>
+          <p>Five response modes — including knowing when to say nothing.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">✓</div>
+          <h3>Corrigible, always</h3>
+          <p>Correct anything in one tap. It updates every future reflection.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">⚷</div>
+          <h3>Private by default</h3>
+          <p>Solo mode, encrypted entries. Nothing leaves your account uninvited.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">☾</div>
+          <h3>A gentle safety net</h3>
+          <p>Real distress is routed to real human support, always.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOR THERAPISTS -->
+  <section id="therapists">
+    <div class="wrap">
+      <div class="therapist-band">
+        <div>
+          <span class="kicker">For therapists</span>
+          <h2>A head start, not a replacement.</h2>
+          <p>See only what your client explicitly shares — summaries, flagged patterns, a crisis channel. Nothing automatic.</p>
+          <a href="#" class="btn btn-primary" data-tip="Preview what a linked therapist sees">Explore the therapist view</a>
+        </div>
+        <div class="therapist-mini">
+          <div class="row"><span class="dot"></span> Client shared this week's reflection — 2 hours ago</div>
+          <div class="row"><span class="dot"></span> Sadness trending up vs. last 6 weeks</div>
+          <div class="row"><span class="dot"></span> New pattern flagged: self-doubt → withdrawal</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUOTES (placeholder — swap for real user quotes before launch) -->
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">What people are noticing</span>
+        <h2>Illustrative feedback — replace with real quotes at launch</h2>
+      </div>
+      <div class="quotes-grid">
+        <div class="quote-card">
+          <p class="q">"The first app that didn't make me feel worse for not journaling every single day."</p>
+          <div class="who"><div class="avatar"></div> Early tester, placeholder quote</div>
+        </div>
+        <div class="quote-card">
+          <p class="q">"My weekly reflection actually reads like something a thoughtful friend would say — not a report."</p>
+          <div class="who"><div class="avatar"></div> Early tester, placeholder quote</div>
+        </div>
+        <div class="quote-card">
+          <p class="q">"Sharing one weekly summary with my therapist saved us the first ten minutes of every session."</p>
+          <div class="who"><div class="avatar"></div> Early tester, placeholder quote</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRIVACY -->
+  <section id="trust">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">Trust</span>
+        <h2>Your words stay yours</h2>
+      </div>
+      <div class="privacy">
+        <div class="item"><div class="big">Encrypted</div><p>Journal entries are encrypted at rest, always.</p></div>
+        <div class="item"><div class="big">Non-diagnostic</div><p>me never assigns a diagnosis or a disorder — it describes, it doesn't decide.</p></div>
+        <div class="item"><div class="big">Consent, element by element</div><p>Every share with a therapist is explicit and revocable — nothing is automatic.</p></div>
+        <div class="item"><div class="big">You can delete anytime</div><p>Remove any entry, correction, or shared item permanently, whenever you choose.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section>
+    <div class="wrap">
+      <div class="final-cta">
+        <h2>Start with today's entry.</h2>
+        <p>No streaks. No daily pressure. Just a place to write.</p>
+        <a href="#" class="btn btn-primary" data-tip="Free, no credit card">Start journaling — it's free</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <div class="logo">me</div>
+        <p>A private journal with a calm AI companion — and an optional, consent-based bridge to your therapist.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#trust">Privacy</a>
+      </div>
+      <div class="footer-col">
+        <h4>For</h4>
+        <a href="#">Individuals</a>
+        <a href="#therapists">Therapists</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="#">About</a>
+        <a href="#">Contact</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 me. Not a substitute for professional mental health care.</span>
+      <span>Made with care, on a calm rhythm.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  var demoShell = document.getElementById('demoShell');
+  var themeBtns = document.querySelectorAll('[data-theme-btn]');
+  themeBtns.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      demoShell.setAttribute('data-theme', btn.getAttribute('data-theme-btn'));
+      themeBtns.forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

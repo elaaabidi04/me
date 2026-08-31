@@ -1,0 +1,19 @@
+# Laravel / API
+api/vendor/
+api/.env
+api/storage/logs/
+api/storage/app/
+api/storage/framework/cache/
+api/storage/framework/sessions/
+api/storage/framework/views/
+api/*.sqlite
+api/cookies.txt
+
+# Vue SPA
+spa/node_modules/
+spa/dist/
+
+# General
+.DS_Store
+Thumbs.db
+*.log
