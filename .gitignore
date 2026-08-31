@@ -12,8 +12,14 @@ api/cookies.txt
 # Vue SPA
 spa/node_modules/
 spa/dist/
+spa/.env
 
-# General
+# Root node_modules (if any)
+node_modules/
+
+# Temp / OS files
 .DS_Store
 Thumbs.db
 *.log
+~$*
+*.tmp
