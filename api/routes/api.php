@@ -40,6 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/activity', [AdminController::class, 'activity'])->middleware('admin');
     // 2026-11-10: the admin opens a demo copy with no entry / AI caps
     Route::post('/admin/demo-login', [DemoController::class, 'adminLogin'])->middleware('admin');
+    Route::post('/admin/back', [DemoController::class, 'backToAdmin']);   // checks its own session flag
     Route::get('/user', function (Request $request) {
         $user = $request->user()->load('preferences');
         // 2026-11-10: how many demo entries this visitor has left

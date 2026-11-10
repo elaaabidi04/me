@@ -61,7 +61,7 @@ class DemoController extends Controller
 
         Auth::login($user);
         $request->session()->regenerate();
-        $request->session()->forget('demo_unlimited');   // only the admin route sets it
+        $request->session()->forget(['demo_unlimited', 'demo_admin_id']);   // only the admin route sets them
 
         // 2026-11-10: count the click for /admin (button + time only). Never
         // allowed to break a login.
@@ -90,6 +90,7 @@ class DemoController extends Controller
     {
         abort_unless(config('demo.enabled'), 404);
         $role = $request->validate(['role' => ['required', 'in:client,therapist']])['role'];
+        $adminId = $request->user()->id;   // remembered so "← admin" can switch back without a password
 
         $token = $request->cookie(self::COOKIE);
         $user  = DemoSandbox::isValidToken($token) ? DemoSandbox::find($token, $role) : null;
@@ -108,6 +109,7 @@ class DemoController extends Controller
         Auth::guard('web')->login($user);
         $request->session()->regenerate();
         $request->session()->put('demo_unlimited', true);
+        $request->session()->put('demo_admin_id', $adminId);
 
         $response = response()->json(array_merge($user->load('preferences')->toArray(), [
             'demo_tries_left' => null,
@@ -118,5 +120,23 @@ class DemoController extends Controller
         }
 
         return $response;
+    }
+
+    /**
+     * 2026-11-10: POST /api/admin/back -- from an admin test session (see
+     * adminLogin) straight back to the admin account, no password. Only
+     * works in the same session that adminLogin started.
+     */
+    public function backToAdmin(Request $request)
+    {
+        $id    = $request->session()->get('demo_admin_id');
+        $admin = $id ? \App\Models\User::find($id) : null;
+        abort_unless($admin && $admin->is_admin, 403);
+
+        Auth::guard('web')->login($admin);
+        $request->session()->regenerate();
+        $request->session()->forget(['demo_unlimited', 'demo_admin_id']);
+
+        return response()->json($admin);
     }
 }
