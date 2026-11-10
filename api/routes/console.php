@@ -27,7 +27,7 @@ Artisan::command('demo:reset', function () {
 
 // 2026-10-25: create (or reset the password of) the owner account behind
 // /admin. Uses ADMIN_EMAIL from .env unless an email is passed.
-Artisan::command('admin:create {email?}', function (?string $email = null) {
+Artisan::command('admin:create {email?} {--from-env : non-interactive, password from ADMIN_PASSWORD (used at container start, see deploy/start.sh)}', function (?string $email = null) {
     $email = $email ?: config('demo.admin_email');
     if (! $email) {
         $this->error('Set ADMIN_EMAIL in .env first (or pass an email).');
@@ -38,7 +38,11 @@ Artisan::command('admin:create {email?}', function (?string $email = null) {
         return 1;
     }
 
-    $password = $this->secret('Password for '.$email.' (min 12 characters)');
+    // 2026-11-10: on the host there's no terminal to type into -- the
+    // container start runs `admin:create --from-env` with ADMIN_PASSWORD
+    $password = $this->option('from-env')
+        ? (string) config('demo.admin_password')
+        : $this->secret('Password for '.$email.' (min 12 characters)');
     if (! $password || strlen($password) < 12) {
         $this->error('Password must be at least 12 characters.');
         return 1;

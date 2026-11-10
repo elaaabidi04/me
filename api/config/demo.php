@@ -62,6 +62,10 @@ return [
     // accounts). Create it with `php artisan admin:create`. Unset = no admin.
     'admin_email' => env('ADMIN_EMAIL'),
 
+    // 2026-11-10: lets the container create/refresh the admin account on
+    // start (`admin:create --from-env`) -- hosts with no shell. Unset = skip.
+    'admin_password' => env('ADMIN_PASSWORD'),
+
     // 2026-11-07: blocked prompt-injection attempts email ADMIN_EMAIL at
     // most once per account per this many minutes (App\Support\InjectionGuard).
     'injection_mail_cooldown_minutes' => (int) env('INJECTION_MAIL_COOLDOWN', 10),
