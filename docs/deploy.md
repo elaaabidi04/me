@@ -1,4 +1,4 @@
-# Deploying the public demo (Supabase + Render)
+# Deploying the public demo (Supabase + Render + Vercel)
 
 Added 2026-11-10.
 
@@ -58,3 +58,18 @@ The Shell tab may not be available on the free plan. If so, run the same command
 - **Supabase free pauses a project after about a week with no activity.** Resume it from the dashboard.
 - **Email**: `MAIL_MAILER=log` writes injection alerts to the Render logs. For real emails, set the SMTP variables (`MAIL_MAILER=smtp`, `MAIL_HOST` …). If they never arrive, the host may be blocking SMTP ports, so use an email API provider instead.
 - **Logs**: `LOG_CHANNEL=stderr` sends Laravel's log to the Render **Logs** tab.
+
+## 3. Vercel (the website), added 2026-11-10
+
+Vercel serves the Vue app. `spa/vercel.json` **forwards `/api/*` and `/sanctum/*` to Render**, so the browser only ever talks to the Vercel address. `vercel.app` and `onrender.com` are different sites, and the login cookie would otherwise be a blocked third-party cookie. (Render also still serves the app at its own address. That copy is harmless and handy for debugging.)
+
+1. Deploy Render first and note its address, e.g. `https://me-demo.onrender.com`. If it differs, change the two `me-demo.onrender.com` lines in `spa/vercel.json` and push.
+2. On vercel.com: **Add New → Project**, import `elaaabidi04/me`, and set:
+   - **Root Directory**: `spa`
+   - Framework: Vite (it's detected automatically)
+   - Environment variable: `VITE_DEMO_MODE` = `true`. Don't set `VITE_API_URL`: production builds already call the same address.
+3. Deploy. Then put the Vercel address in Render's environment and redeploy Render:
+   - `SANCTUM_STATEFUL_DOMAINS` = `me-xxx.vercel.app` (no `https://`)
+   - `FRONTEND_URL` = `https://me-xxx.vercel.app`
+
+While Render is asleep, the first request after a pause can take about a minute, and Vercel's forwarding may give up before that. Refresh once it's awake.
