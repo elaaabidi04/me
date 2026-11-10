@@ -61,6 +61,23 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
 
+        // 2026-11-10: the /admin account is created/updated right here when
+        // someone signs in with exactly ADMIN_EMAIL + ADMIN_PASSWORD (host
+        // env vars) -- no shell or startup step needed on the server.
+        $adminEmail = strtolower(trim((string) config('demo.admin_email')));
+        $adminPass  = trim((string) config('demo.admin_password'));
+        if ($adminEmail !== '' && strlen($adminPass) >= 12
+            && strtolower(trim($credentials['email'])) === $adminEmail
+            && hash_equals($adminPass, trim((string) $credentials['password']))) {
+            $admin = User::whereRaw('lower(email) = ?', [$adminEmail])->first() ?? new User();
+            $admin->email = $adminEmail;
+            $admin->name ??= 'Admin';
+            $admin->role ??= 'client';
+            $admin->password = $adminPass;   // hashed by the model cast
+            $admin->save();
+            $credentials['password'] = $adminPass;
+        }
+
         // 2026-11-10: PostgreSQL compares emails case-sensitively (SQLite
         // didn't) -- "Elaa@..." vs "elaa@..." failed. Try as typed, then
         // lowercased.

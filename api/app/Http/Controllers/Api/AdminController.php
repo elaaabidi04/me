@@ -34,7 +34,7 @@ class AdminController extends Controller
         $demoUsers = User::where('email', 'like', '%@'.DemoSandbox::DOMAIN)->get()->keyBy('id');
 
         if ($demoUsers->isEmpty()) {
-            return response()->json(['sandboxes' => 0, 'items' => []]);
+            return response()->json(['sandboxes' => 0, 'items' => [], 'clicks' => self::clickStats()]);
         }
 
         $ids  = $demoUsers->keys();
@@ -123,8 +123,31 @@ class AdminController extends Controller
             ]));
 
         return response()->json([
-            'sandboxes' => $demoUsers->filter(fn ($u) => str_starts_with($u->email, 'maya.'))->count(),
+            // ready-made copies nobody has opened yet don't count as visitors
+            'sandboxes' => max(0, $demoUsers->filter(fn ($u) => str_starts_with($u->email, 'maya.'))->count() - \Illuminate\Support\Facades\DB::table('demo_pool')->count()),
+            'clicks' => self::clickStats(),
             'items' => $items->sortByDesc('at')->take(self::LIMIT)->values(),
         ]);
+    }
+
+    /** 2026-11-10: clicks on "test user" / "test therapist" (demo_logins). */
+    private static function clickStats(): array
+    {
+        $q = fn () => \Illuminate\Support\Facades\DB::table('demo_logins');
+        $out = [];
+        foreach (['client', 'therapist'] as $role) {
+            $out[$role] = [
+                'today' => $q()->where('role', $role)->where('created_at', '>=', now()->startOfDay())->count(),
+                'week'  => $q()->where('role', $role)->where('created_at', '>=', now()->subDays(7))->count(),
+                'total' => $q()->where('role', $role)->count(),
+            ];
+        }
+        $out['new_visitors'] = [
+            'today' => $q()->where('is_new', true)->where('created_at', '>=', now()->startOfDay())->count(),
+            'week'  => $q()->where('is_new', true)->where('created_at', '>=', now()->subDays(7))->count(),
+            'total' => $q()->where('is_new', true)->count(),
+        ];
+
+        return $out;
     }
 }

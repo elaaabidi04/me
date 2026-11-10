@@ -63,6 +63,14 @@ class DemoController extends Controller
         $request->session()->regenerate();
         $request->session()->forget('demo_unlimited');   // only the admin route sets it
 
+        // 2026-11-10: count the click for /admin (button + time only). Never
+        // allowed to break a login.
+        try {
+            \Illuminate\Support\Facades\DB::table('demo_logins')->insert(['role' => $role, 'is_new' => $isNew, 'created_at' => now()]);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
         $response = response()->json($user->load('preferences'));
 
         // Only set on creation, so the cookie expires together with the sandbox.
