@@ -67,7 +67,15 @@ router.beforeEach(async (to) => {
   // instead of showing marketing copy to someone who already has an
   // account. Role-appropriate landing (therapist vs client) is resolved
   // below, same as the guestOnly redirect just does for 'dashboard'.
-  if (to.name === 'home' && auth.isAuthenticated) {
+  // 2026-11-10: the admin account has no journal of its own -- its home is
+  // /admin, wherever a link or a redirect would otherwise drop it
+  if (auth.user?.is_admin && ['home', 'dashboard', 'onboarding', 'login', 'register'].includes(to.name)) {
+    return { name: 'admin' }
+  }
+
+  // 2026-11-10: not for demo visitors -- for them "back" from the app is
+  // the landing page they came from; redirecting trapped the back button.
+  if (to.name === 'home' && auth.isAuthenticated && !auth.user?.is_demo) {
     return { name: auth.user?.role === 'therapist' ? 'therapist' : 'dashboard' }
   }
 
@@ -85,7 +93,9 @@ router.beforeEach(async (to) => {
   if (to.meta.requiresAdmin && !auth.user?.is_admin) {
     return { name: 'home' }
   }
-  if (to.meta.guestOnly && auth.isAuthenticated) {
+  // 2026-11-10: a demo visitor going back to /login sees the two test
+  // buttons again (switch user <-> therapist) instead of being bounced
+  if (to.meta.guestOnly && auth.isAuthenticated && !(auth.user?.is_demo && to.name === 'login')) {
     return { name: 'dashboard' }
   }
 
@@ -132,6 +142,30 @@ router.beforeEach(async (to) => {
   if (auth.isAuthenticated && to.name === 'shared-insights' && auth.user?.role !== 'therapist' && !to.query.client_id) {
     return { name: 'my-insights' }
   }
+})
+
+// 2026-11-10: after a redeploy, a tab that was already open still asks for
+// the OLD build's page files (their names change every build), the server
+// rightly 404s them, and the navigation died silently -> blank page. Reload
+// once at the target URL so the browser picks up the new build.
+const CHUNK_ERROR = /dynamically imported module|Couldn.t resolve component|Importing a module script failed|Unable to preload|Failed to fetch|error loading dynamically|Loading (CSS )?chunk|ChunkLoadError/i
+function reloadOnce(url) {
+  let last = 0
+  try { last = Number(sessionStorage.getItem('chunk-reload-at') || 0) } catch {}
+  if (Date.now() - last < 10000) return false   // already reloaded just now: don't loop
+  try { sessionStorage.setItem('chunk-reload-at', String(Date.now())) } catch {}
+  window.location.assign(url)
+  return true
+}
+router.onError((err, to) => {
+  if (CHUNK_ERROR.test(String(err?.message || err))) reloadOnce(to?.fullPath || window.location.href)
+})
+// Vite reports a stale CSS/JS file here ("Unable to preload CSS for …").
+// Give the router a moment to report it with the target page; otherwise
+// reload where we are.
+window.addEventListener('vite:preloadError', (event) => {
+  event.preventDefault()
+  setTimeout(() => reloadOnce(window.location.href), 300)
 })
 
 export default router

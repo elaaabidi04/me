@@ -33,6 +33,21 @@ RUN cp -r /tmp/spa/. public/ && mv public/index.html public/spa.html && rm -rf /
 COPY deploy/start.sh /usr/local/bin/start
 RUN sed -i 's/\r$//' /usr/local/bin/start && chmod +x /usr/local/bin/start
 
+# 2026-11-10: PHP's code cache is OFF by default for the CLI server we run --
+# without this, every request recompiled all of Laravel (seconds on a small
+# free CPU). Code never changes inside a running container, so skip the
+# file-change checks too.
+RUN { \
+      echo 'opcache.enable=1'; \
+      echo 'opcache.enable_cli=1'; \
+      echo 'opcache.validate_timestamps=0'; \
+      echo 'opcache.memory_consumption=128'; \
+      echo 'opcache.interned_strings_buffer=16'; \
+      echo 'opcache.max_accelerated_files=20000'; \
+      echo 'realpath_cache_size=4096K'; \
+      echo 'realpath_cache_ttl=600'; \
+    } > /usr/local/etc/php/conf.d/zz-speed.ini
+
 ENV PHP_CLI_SERVER_WORKERS=4
 EXPOSE 8080
 CMD ["start"]

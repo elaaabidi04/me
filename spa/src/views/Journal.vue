@@ -8,6 +8,14 @@ import { warm, NEED_WORDS, PROTECTIVE_WORDS, BEHAVIOR_WORDS, THINKING_PATTERN_WO
 const router = useRouter()
 const auth   = useAuthStore()
 // 2026-11-10: demo copies get a few entries; 0 left = compose is closed
+// 2026-11-10: /api/daily-review/pending doesn't always send entry_count --
+// fall back to the entries on screen for that day (was rendering "( entries)")
+const reviewCount = computed(() => {
+  const r = pendingReview.value
+  if (!r) return 0
+  if (typeof r.entry_count === 'number') return r.entry_count
+  return entries.value.filter((e) => (e.created_at || '').slice(0, 10) === r.date).length || (r.date === todayStr ? entries.value.length : 0)
+})
 const noTriesLeft = computed(() => !!auth.user?.is_demo && auth.user.demo_tries_left === 0)
 async function handleLogout() { await auth.logout(); router.push({ name: 'home' }) }
 
@@ -485,7 +493,7 @@ onUnmounted(() => { clearInterval(_resetTimer); if (crisisTimer) clearInterval(c
         class="ghost save-journal-btn"
         :disabled="savingJournal"
         @click="saveJournal"
-      >{{ savingJournal ? 'saving…' : '✓ save the journal' }}</button>
+      >{{ savingJournal ? 'saving…' : '✓ save' }}<span class="save-long"> the journal</span></button>
     </div>
     <p v-if="saveJournalError" class="save-journal-error">{{ saveJournalError }}</p>
 
@@ -493,12 +501,12 @@ onUnmounted(() => { clearInterval(_resetTimer); if (crisisTimer) clearInterval(c
          having been clicked (pendingReview set); see docblock above. -->
     <div v-if="pendingReview" class="review-banner">
       <p class="review-text">
-        saved. want to see {{ pendingReview.date === todayStr ? "today's" : "that day's" }} breakdown
-        ({{ pendingReview.entry_count }} {{ pendingReview.entry_count === 1 ? 'entry' : 'entries' }})?
+        <span class="rv-long">saved. want to see {{ pendingReview.date === todayStr ? "today's" : "that day's" }} breakdown{{ reviewCount ? ` (${reviewCount} ${reviewCount === 1 ? 'entry' : 'entries'})` : '' }}?</span>
+        <span class="rv-short">saved ✓</span>
       </p>
       <div class="review-actions">
-        <button class="ghost" @click="dismissReviewBanner">not now</button>
-        <button class="ghost review-go" @click="openReviewDrawer">see it →</button>
+        <button class="ghost review-go" @click="openReviewDrawer"><span class="rv-long">see it →</span><span class="rv-short">breakdown →</span></button>
+        <button class="ghost review-x" @click="dismissReviewBanner" aria-label="not now"><span class="rv-long">not now</span><span class="rv-short">✕</span></button>
       </div>
     </div>
 
@@ -609,7 +617,8 @@ onUnmounted(() => { clearInterval(_resetTimer); if (crisisTimer) clearInterval(c
         ></textarea>
         <div class="compose-foot">
           <!-- 2026-11-07: demo visitors are reminded the owner can read this -->
-          <span v-if="auth.user?.is_demo" class="demo-visible">demo · visible to the developer<template v-if="typeof auth.user.demo_tries_left === 'number'"> · <b>{{ auth.user.demo_tries_left }}</b> {{ auth.user.demo_tries_left === 1 ? 'try' : 'tries' }} left</template></span>
+          <span v-if="auth.user?.demo_unlimited" class="demo-visible">admin test · unlimited</span>
+          <span v-else-if="auth.user?.is_demo" class="demo-visible">demo · visible to the developer<template v-if="typeof auth.user.demo_tries_left === 'number'"> · <b>{{ auth.user.demo_tries_left }}</b> {{ auth.user.demo_tries_left === 1 ? 'try' : 'tries' }} left</template></span>
           <span class="hint" :class="{ show: saved }">set down.</span>
           <span v-if="sendError" class="send-error">{{ sendError }}</span>
           <button class="primary" :disabled="sending || !text.trim() || noTriesLeft" @click="send">
@@ -643,7 +652,7 @@ onUnmounted(() => { clearInterval(_resetTimer); if (crisisTimer) clearInterval(c
   --font-ui:'Instrument Sans', system-ui, sans-serif;
   background:var(--paper); color:var(--ink);
   font-family:var(--font-ui); line-height:1.5;
-  height:100svh; display:flex; flex-direction:column; overflow:hidden;
+  height:calc(100svh - var(--demo-h, 0px)); display:flex; flex-direction:column; overflow:hidden;
   transition:background .4s ease, color .4s ease;
 }
 * { box-sizing:border-box; }
@@ -697,6 +706,8 @@ onUnmounted(() => { clearInterval(_resetTimer); if (crisisTimer) clearInterval(c
   padding:12px 40px; background:var(--surface); border-bottom:1px solid var(--line);
 }
 .review-text { margin:0; font-size:13.5px; line-height:1.5; color:var(--ink); }
+.rv-short { display:none; }
+.review-actions .review-go { order:2; } .review-actions .review-x { order:1; }
 .review-actions { display:flex; gap:6px; flex-shrink:0; }
 .review-go { color:var(--accent-deep); font-weight:500; }
 
@@ -810,6 +821,10 @@ onUnmounted(() => { clearInterval(_resetTimer); if (crisisTimer) clearInterval(c
 .coach-para {
   margin:0 0 12px; line-height:1.75;
 }
+/* 2026-11-10: the last paragraph of a coach reply (rendered via v-html)
+   left an empty strip at the bottom of the bubble */
+.bubble-body :deep(p:last-child), .bubble-body :deep(.coach-para:last-child) { margin-bottom:0; }
+.bubble-body :deep(p:first-child) { margin-top:0; }
 .coach-para:last-child { margin-bottom:0; }
 .coach-para strong { font-weight:640; color:var(--ink); }
 .bubble-time {
@@ -864,12 +879,31 @@ onUnmounted(() => { clearInterval(_resetTimer); if (crisisTimer) clearInterval(c
 /* ---- mobile ------------------------------------------------------- */
 @media (max-width: 680px) {
   .bar { padding:16px 20px; }
-  .intent-bar { padding:10px 20px; }
-  .thread-inner { padding:24px 20px 16px; }
-  .compose-inner { padding:12px 20px 16px; }
-  .review-banner { padding:12px 20px; }
-  .save-journal-error { padding:6px 20px 0; }
+  .intent-bar { padding:8px 14px; gap:6px; flex-wrap:nowrap; }
+  .intent-label { display:none; }
+  .intent-bar .pill { font-size:12.5px; padding:5px 11px; white-space:nowrap; }
+  .save-journal-btn { font-size:12.5px; padding:5px 10px; white-space:nowrap; }
+  .save-long { display:none; }
+  .thread-inner { padding:16px 14px 12px; gap:16px; }
+  .compose-inner { padding:8px 14px 10px; }
+  .compose textarea { font-size:14.5px; padding:9px 12px; height:64px; }
+  .compose-foot { margin-top:6px; gap:8px; }
+  .demo-visible { font-size:11px; line-height:1.35; }
+  .primary { padding:8px 18px; font-size:13.5px; }
+  /* one slim line: "saved ✓ · breakdown → · ✕" */
+  .review-banner { padding:5px 8px 5px 14px; gap:6px; flex-wrap:nowrap; }
+  .review-text { font-size:12.5px; line-height:1.3; color:var(--muted); }
+  .rv-long { display:none; }
+  .rv-short { display:inline; }
+  .review-actions { gap:0; }
+  .review-actions .review-go { order:1; } .review-actions .review-x { order:2; }
+  .review-actions .ghost { padding:4px 8px; font-size:12.5px; }
+  .review-x { color:var(--muted); }
+  .save-journal-error { padding:6px 14px 0; }
   .review-panel { width:100%; padding:20px 20px 32px; }
+  .me-bubble { padding:11px 14px; max-width:90%; }
+  .coach-bubble { padding:13px 16px; max-width:92%; }
+  .bubble-body { font-size:14.5px; line-height:1.6; }
 }
 
 @media (prefers-reduced-motion: reduce) { .me, * { transition:none !important; } }

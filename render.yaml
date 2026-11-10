@@ -1,5 +1,5 @@
-# Render Blueprint (2026-11-10, see docs/deploy.md). Runs the API; the
-# website is on Vercel, which forwards /api and /sanctum here. Secrets marked
+# Render Blueprint (2026-11-10, see docs/deploy.md). One service: the API
+# AND the website on the same address. Secrets marked
 # sync: false are asked for in the Render dashboard, never stored here.
 services:
   - type: web
@@ -16,8 +16,8 @@ services:
       - { key: LOG_CHANNEL, value: stderr }
       - { key: APP_KEY, sync: false }
       - { key: APP_URL, sync: false }                  # https://<name>.onrender.com
-      - { key: SANCTUM_STATEFUL_DOMAINS, sync: false } # your Vercel address, no https:// (e.g. me-elaa.vercel.app)
-      - { key: FRONTEND_URL, sync: false }             # https://<your Vercel address>
+      - { key: SANCTUM_STATEFUL_DOMAINS, sync: false } # your Render address, no https:// (e.g. me-demo.onrender.com)
+      - { key: FRONTEND_URL, sync: false }             # same as APP_URL
       - { key: SESSION_DRIVER, value: database }
       - { key: SESSION_SECURE_COOKIE, value: "true" }
       - { key: CACHE_STORE, value: database }
@@ -32,5 +32,6 @@ services:
       - { key: DEMO_MODE, value: "true" }
       - { key: DEMO_ENTRIES, value: "3" }
       - { key: ADMIN_EMAIL, sync: false }
+      - { key: ADMIN_PASSWORD, sync: false }           # 10+ characters; creates the /admin account on start
       - { key: NVIDIA_API_KEY, sync: false }
       - { key: MAIL_MAILER, value: log }

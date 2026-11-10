@@ -55,15 +55,15 @@ const tourSteps = [
   { target: '.pattern-drawer', interactive: true, wait: 1200,
     title: 'the receipts',
     body: 'the actual entries behind the pattern.' },
-  { target: '[data-tour="nav-journal"]',
+  { target: ['[data-tour="nav-journal"]', '.phone-menu-btn'],
     title: 'your turn',
-    body: 'write anything. the coach replies in seconds.' },
+    body: 'the journal: write anything, the coach replies in seconds.' },
   { target: '[data-tour="nav-monthly"]',
     title: 'zoom out',
     body: 'months of trends at a glance.' },
-  { target: '[data-tour="tour-btn"]', doneLabel: "let's go",
+  { target: ['[data-tour="tour-btn"]', '.phone-menu-btn'], doneLabel: "let's go",
     title: 'replay anytime',
-    body: 'right here.' },
+    body: 'right here, or in the menu on a phone.' },
 ]
 
 /* ---- theming ------------------------------------------------------ */

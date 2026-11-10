@@ -20,7 +20,9 @@ async function tryDemo(role) {
   demoLoading.value = role
   try {
     const user = await auth.loginAsDemo(role)
-    router.push({ name: user.role === 'therapist' ? 'therapist' : 'dashboard' })
+    // replace, not push: the browser's back button then leaves the app
+    // instead of bouncing off /login straight back into it (2026-11-10)
+    router.replace({ name: user.role === 'therapist' ? 'therapist' : 'dashboard' })
   } catch {
     // auth.error is set by the store
   } finally {
@@ -37,8 +39,8 @@ async function submit() {
   submitting.value = true
   try {
     await auth.login(form.value)
-    if (auth.user?.is_admin) router.push({ name: 'admin' })
-    else router.push({ name: auth.user?.role === 'therapist' ? 'therapist' : 'dashboard' })
+    if (auth.user?.is_admin) router.replace({ name: 'admin' })
+    else router.replace({ name: auth.user?.role === 'therapist' ? 'therapist' : 'dashboard' })
   } catch {
     // auth.error is already set by the store; the template reads it below.
   } finally {

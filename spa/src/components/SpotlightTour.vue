@@ -116,11 +116,17 @@ function next() { isLast.value ? close(true) : goTo(index.value + 1, 1) }
 function back() { if (index.value > 0) goTo(index.value - 1, -1) }
 
 // ---------------------------------------------------------------- stepping
+// 2026-11-10: a target can be a list -- the first VISIBLE one wins (on
+// phones the top-bar links sit inside the menu, so those steps fall back
+// to the menu button)
 function findTarget(selector) {
-  const el = document.querySelector(selector)
-  if (!el) return null
-  const r = el.getBoundingClientRect()
-  return r.width > 0 && r.height > 0 ? el : null      // hidden (display:none / collapsed) counts as missing
+  for (const sel of Array.isArray(selector) ? selector : [selector]) {
+    const el = document.querySelector(sel)
+    if (!el) continue
+    const r = el.getBoundingClientRect()
+    if (r.width > 0 && r.height > 0) return el      // hidden (display:none / collapsed) counts as missing
+  }
+  return null
 }
 
 function waitForTarget(selector, myToken, waitMs = WAIT_MS) {

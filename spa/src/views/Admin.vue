@@ -12,6 +12,7 @@ const auth = useAuthStore()
 
 const items = ref([])
 const sandboxes = ref(0)
+const clicks = ref(null)   // 2026-11-10: test user / test therapist clicks
 const loading = ref(true)
 const error = ref(null)
 const filter = ref('all')
@@ -28,10 +29,27 @@ async function load() {
     const { data } = await api.get('/api/admin/activity')
     items.value = data.items
     sandboxes.value = data.sandboxes
+    clicks.value = data.clicks || null
   } catch (e) {
     error.value = e.response?.status === 404 ? 'This account is not the admin (check ADMIN_EMAIL).' : 'Could not load activity.'
   } finally {
     loading.value = false
+  }
+}
+
+// 2026-11-10: open a demo copy as the admin -- no entry or AI caps
+const opening = ref(null)
+async function openDemo(role) {
+  opening.value = role
+  error.value = null
+  try {
+    const { data } = await api.post('/api/admin/demo-login', { role })
+    auth.user = data
+    router.push({ name: role === 'therapist' ? 'therapist' : 'dashboard' })
+  } catch (e) {
+    error.value = e.response?.data?.message || 'Could not open the demo.'
+  } finally {
+    opening.value = null
   }
 }
 
@@ -61,6 +79,24 @@ onMounted(load)
           <button class="ghost" @click="logout">log out</button>
         </div>
       </header>
+
+      <section v-if="clicks" class="stats">
+        <div class="stat-head"><span></span><span>today</span><span>7 days</span><span>all time</span></div>
+        <div class="stat-row"><strong>test user clicks</strong><span>{{ clicks.client.today }}</span><span>{{ clicks.client.week }}</span><span>{{ clicks.client.total }}</span></div>
+        <div class="stat-row"><strong>test therapist clicks</strong><span>{{ clicks.therapist.today }}</span><span>{{ clicks.therapist.week }}</span><span>{{ clicks.therapist.total }}</span></div>
+        <div class="stat-row sub"><strong>new visitors</strong><span>{{ clicks.new_visitors.today }}</span><span>{{ clicks.new_visitors.week }}</span><span>{{ clicks.new_visitors.total }}</span></div>
+      </section>
+
+      <section class="try">
+        <div>
+          <strong>test it yourself</strong>
+          <span>unlimited entries and AI replies · tap “← admin” (bottom left) to come back here</span>
+        </div>
+        <div class="try-btns">
+          <button class="ghost" :disabled="opening !== null" @click="openDemo('client')">{{ opening === 'client' ? 'opening…' : 'test user ∞' }}</button>
+          <button class="ghost" :disabled="opening !== null" @click="openDemo('therapist')">{{ opening === 'therapist' ? 'opening…' : 'test therapist ∞' }}</button>
+        </div>
+      </section>
 
       <div class="filters" v-if="items.length">
         <button
@@ -110,6 +146,19 @@ button { font: inherit; cursor: pointer; }
 .ghost:hover { border-color: #57735F; }
 .ghost:disabled { opacity: .6; cursor: default; }
 .filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.stats { background: #FBFBFA; border-radius: 14px; padding: 12px 16px; display: flex; flex-direction: column; gap: 2px; }
+.stat-head, .stat-row { display: grid; grid-template-columns: 1fr 64px 64px 72px; align-items: center; gap: 8px; }
+.stat-head { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #8A8E91; padding-bottom: 4px; }
+.stat-head span, .stat-row span { text-align: right; font-variant-numeric: tabular-nums; }
+.stat-row { padding: 7px 0; border-top: 1px solid #EEEFEC; font-size: 14px; }
+.stat-row strong { font-weight: 500; }
+.stat-row span { font-size: 16px; font-weight: 600; color: #2B2F31; }
+.stat-row.sub strong, .stat-row.sub span { color: #6B6F72; font-weight: 400; font-size: 13.5px; }
+@media (max-width: 520px) { .stat-head, .stat-row { grid-template-columns: 1fr 44px 50px 56px; } .stat-row strong { font-size: 13px; } }
+.try { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; background: #FBFBFA; border-radius: 14px; padding: 14px 16px; }
+.try strong { display: block; font-size: 14px; }
+.try span { font-size: 12.5px; color: #6B6F72; }
+.try-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .chip {
   background: #FBFBFA; border: 1px solid #E3E4E1; color: #4A4E51;
   padding: 6px 12px; border-radius: 999px; font-size: 12.5px; display: inline-flex; gap: 6px; align-items: center;

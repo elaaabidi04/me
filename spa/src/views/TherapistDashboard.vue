@@ -38,7 +38,7 @@ const tourSteps = [
   { target: '[data-tour="activity"]',
     title: 'what changed',
     body: 'new shares, finished tasks, new flags.' },
-  { target: '[data-tour="tour-btn"]', doneLabel: "let's go",
+  { target: ['[data-tour="tour-btn"]', '.phone-menu-btn'], doneLabel: "let's go",
     title: 'replay anytime',
     body: 'right here.' },
 ]

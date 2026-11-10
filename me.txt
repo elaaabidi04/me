@@ -1,2 +1,2 @@
 me
-supabase host : postgresql://postgres:lollaslife2004@db.jpdprxoolhojsilkhgkc.supabase.co:5432/postgres
+supabase host : postgresql://postgres:MeDemo2026xyz@db.jpdprxoolhojsilkhgkc.supabase.co:5432/postgres

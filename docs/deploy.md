@@ -59,7 +59,9 @@ The Shell tab may not be available on the free plan. If so, run the same command
 - **Email**: `MAIL_MAILER=log` writes injection alerts to the Render logs. For real emails, set the SMTP variables (`MAIL_MAILER=smtp`, `MAIL_HOST` …). If they never arrive, the host may be blocking SMTP ports, so use an email API provider instead.
 - **Logs**: `LOG_CHANNEL=stderr` sends Laravel's log to the Render **Logs** tab.
 
-## 3. Vercel (the website), added 2026-11-10
+## 3. Optional: Vercel for the website, added 2026-11-10
+
+Not used for now: Render alone serves the site. Kept here in case you switch later.
 
 Vercel serves the Vue app. `spa/vercel.json` **forwards `/api/*` and `/sanctum/*` to Render**, so the browser only ever talks to the Vercel address. `vercel.app` and `onrender.com` are different sites, and the login cookie would otherwise be a blocked third-party cookie. (Render also still serves the app at its own address. That copy is harmless and handy for debugging.)
 
@@ -73,3 +75,10 @@ Vercel serves the Vue app. `spa/vercel.json` **forwards `/api/*` and `/sanctum/*
    - `FRONTEND_URL` = `https://me-xxx.vercel.app`
 
 While Render is asleep, the first request after a pause can take about a minute, and Vercel's forwarding may give up before that. Refresh once it's awake.
+
+## Speed (added 2026-11-10)
+
+Render's free plan has a very small CPU, so:
+
+- **opcache is on for the CLI server** (`Dockerfile`, `zz-speed.ini`). Without it, every request recompiled all of Laravel. `start.sh` also caches config, routes, events and views.
+- **Demo copies are built ahead of time.** `demo:fill-pool` runs every minute and at boot, at low priority (`nice`), and keeps `DEMO_POOL_SIZE` (default 3) copies ready. A click on **test user** or **test therapist** claims one in milliseconds instead of seeding about 700 rows while the visitor waits (about 30 s on the free CPU). Copies older than `DEMO_POOL_MAX_AGE_HOURS` (default 4) are rebuilt so their "today" stays today. A claimed copy's 24h starts at the claim. If the pool is ever empty, the click falls back to building on the spot.

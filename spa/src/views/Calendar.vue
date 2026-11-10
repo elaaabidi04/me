@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import api from '../lib/api'
@@ -33,11 +33,29 @@ const monthLabel = computed(() =>
 function prevMonth() {
   if (viewMonth.value === 0) { viewYear.value--; viewMonth.value = 11 }
   else viewMonth.value--
+  calOpen.value = true   // a new month: show it whole so a day can be picked
 }
 function nextMonth() {
   if (viewMonth.value === 11) { viewYear.value++; viewMonth.value = 0 }
   else viewMonth.value++
+  calOpen.value = true
 }
+
+/* ---- phones: the month folds down to one week (2026-11-10) -------- */
+// The full grid took half a phone screen and squeezed the day's entries.
+// Folded = just the selected day's week; "▾" opens the whole month and
+// picking a day folds it again.
+const phone = ref(false)
+const calOpen = ref(false)
+let phoneMq = null
+const onPhoneMq = () => { phone.value = phoneMq.matches }
+onMounted(() => {
+  phoneMq = window.matchMedia('(max-width: 720px)')
+  onPhoneMq()
+  phoneMq.addEventListener?.('change', onPhoneMq)
+})
+onBeforeUnmount(() => phoneMq?.removeEventListener?.('change', onPhoneMq))
+const folded = computed(() => phone.value && !calOpen.value)
 
 /* ---- calendar grid ------------------------------------------------ */
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -65,6 +83,17 @@ const calDays = computed(() => {
 /* ---- day selection ------------------------------------------------ */
 const selectedStr = ref(todayStr)
 
+// the 7 cells to show while folded: the selected day's week (or this
+// month's first week if the selected day isn't in the month on screen)
+const shownDays = computed(() => {
+  if (!folded.value) return calDays.value
+  const days = calDays.value
+  let i = days.findIndex((c) => toDateStr(c.date) === selectedStr.value)
+  if (i < 0) i = days.findIndex((c) => c.inMonth)
+  const start = Math.floor(Math.max(i, 0) / 7) * 7
+  return days.slice(start, start + 7)
+})
+
 const selectedMidnight = computed(() => {
   const [y, m, d] = selectedStr.value.split('-').map(Number)
   return new Date(y, m - 1, d)
@@ -85,6 +114,7 @@ function selectDay(str) {
   const [y, m, d] = str.split('-').map(Number)
   if (new Date(y, m - 1, d) > todayMidnight) return
   selectedStr.value = str
+  calOpen.value = false   // phones: fold back to the week
 }
 
 /* ---- dots: which days have entries -------------------------------- */
@@ -272,7 +302,10 @@ onMounted(async () => {
       <div class="cal-panel">
         <div class="month-nav">
           <button class="ghost-sm" @click="prevMonth">←</button>
-          <span class="month-label">{{ monthLabel }}</span>
+          <span v-if="!phone" class="month-label">{{ monthLabel }}</span>
+          <button v-else class="month-toggle" type="button" :aria-expanded="calOpen" @click="calOpen = !calOpen">
+            {{ monthLabel }} <span class="caret" :class="{ open: calOpen }">▾</span>
+          </button>
           <button class="ghost-sm" @click="nextMonth">→</button>
         </div>
 
@@ -282,7 +315,7 @@ onMounted(async () => {
 
           <!-- day cells -->
           <button
-            v-for="cell in calDays"
+            v-for="cell in shownDays"
             :key="toDateStr(cell.date)"
             class="day-cell"
             :class="{
@@ -406,7 +439,7 @@ onMounted(async () => {
   --font-ui:'Instrument Sans', system-ui, sans-serif;
   background:var(--paper); color:var(--ink);
   font-family:var(--font-ui); line-height:1.5;
-  height:100svh; display:flex; flex-direction:column; overflow:hidden;
+  height:calc(100svh - var(--demo-h, 0px)); display:flex; flex-direction:column; overflow:hidden;
   transition:background .4s ease, color .4s ease;
 }
 * { box-sizing:border-box; }
@@ -590,7 +623,16 @@ onMounted(async () => {
 /* ── responsive ─────────────────────────────────────────────────── */
 @media (max-width: 720px) {
   .layout { grid-template-columns:1fr; grid-template-rows:auto 1fr; }
-  .cal-panel { border-right:none; border-bottom:1px solid var(--line); padding:20px 16px; }
+  .cal-panel { border-right:none; border-bottom:1px solid var(--line); padding:10px 12px 8px; gap:6px; overflow:visible; }
+  .dow-label { padding:2px 0 4px; }
+  .day-cell { padding:4px 2px 6px; }
+  .month-toggle {
+    background:var(--surface); border:1px solid var(--line); border-radius:999px;
+    font:inherit; font-size:13.5px; font-weight:500; color:var(--ink);
+    padding:6px 14px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;
+  }
+  .caret { display:inline-block; font-size:11px; color:var(--muted); transition:transform .18s ease; }
+  .caret.open { transform:rotate(180deg); }
   .day-header { padding:12px 16px; }
   .thread-inner { padding:20px 16px 16px; }
   .compose-inner { padding:12px 16px 16px; }
