@@ -94,7 +94,18 @@ Artisan::command('coach:try {text} {--mode=engage : engage (dig in) or witness (
 // 2026-11-10: keep a few demo copies ready so a click logs in instantly
 Artisan::command('demo:fill-pool {--size= : how many ready copies to keep}', function () {
     $size  = $this->option('size') !== null ? (int) $this->option('size') : null;
-    $built = DemoSandbox::fillPool($size);
+    // one builder at a time (the boot run and the scheduler could overlap,
+    // doubling the CPU load on a small host right when visitors arrive)
+    $lock = Illuminate\Support\Facades\Cache::lock('demo-fill-pool', 900);
+    if (! $lock->get()) {
+        $this->line('another fill is running');
+        return;
+    }
+    try {
+        $built = DemoSandbox::fillPool($size);
+    } finally {
+        $lock->release();
+    }
     $this->info("built {$built} demo cop".($built === 1 ? 'y' : 'ies').' · '.DB::table('demo_pool')->count().' ready');
 })->purpose('Pre-build demo sandboxes so test logins are instant');
 
