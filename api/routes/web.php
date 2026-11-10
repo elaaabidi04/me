@@ -13,6 +13,9 @@ if (is_file($spa)) {
     // vue-router takes it from there
     Route::fallback(function () use ($spa) {
         abort_if(request()->is('api/*', 'sanctum/*'), 404);   // unknown API URL: a real 404, not the app
+        // a missing file (an old build's /assets/x.css after a redeploy) must
+        // 404 too -- answering it with the HTML page leaves the site unstyled
+        abort_if(request()->is('assets/*') || pathinfo(request()->path(), PATHINFO_EXTENSION) !== '', 404);
 
         return response()->file($spa, ['Cache-Control' => 'no-cache']);
     });
