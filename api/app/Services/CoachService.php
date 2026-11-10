@@ -420,7 +420,7 @@ class CoachService
         ]);
 
         return [
-            'reply'   => ($raw && ($clean = $this->sanitizeReply($raw)) !== null)
+            'reply'   => ($raw && ($clean = $this->avoidExampleEcho($messages, $this->sanitizeReply($raw), $model ?: config('nvidia.model_coach'))) !== null)
                 ? $this->shapeForMode($this->avoidGenericOpener($messages, $clean, $mode, $model ?: config('nvidia.model_coach')), $mode, $askedLastTime)
                 : null,
             'raw'     => $raw,
@@ -541,7 +541,7 @@ class CoachService
             throw new \RuntimeException("CoachService: no response from the coach model for entry {$entry->id}");
         }
 
-        $safe = $this->sanitizeReply($raw);
+        $safe = $this->avoidExampleEcho($messages, $this->sanitizeReply($raw), config('nvidia.model_coach'));
         if ($safe !== null) {
             $safe = $this->avoidGenericOpener($messages, $safe, $mode, config('nvidia.model_coach'));
             $safe = $this->shapeForMode($safe, $mode, $askedLastTime);
@@ -821,6 +821,47 @@ class CoachService
      */
     private const GENERIC_OPENER = '/^\W{0,3}(that\s+sounds|that(\'|’)?s\s+(so\s+|really\s+|genuinely\s+|honestly\s+)?(great|nice|good|lovely|sweet|amazing|wonderful|special|beautiful|awesome)\b|glad\b|aww+\b|love\s+that|oh\s+nice|so\s+glad)/iu';
 
+    /**
+     * 2026-11-10: the model once answered "so i think i'm in love" with a
+     * sample reply from its old prompt, word for word ("my neighbor's parrot
+     * learned my name…"). The samples are gone from the prompt, but older
+     * replies can still sit in the conversation history. If a reply brings
+     * up one of those sample situations and the person never mentioned it,
+     * ask ONCE for a reply to what they actually wrote; if that fails too,
+     * return null so the normal retry / fallback path takes over.
+     */
+    private const EXAMPLE_ECHO = '/\b(parrot|barista|flatmate|leftovers|grandma\W?s radio|building celebrity|cold war|soggy|last bus)\b/iu';
+
+    private function avoidExampleEcho(array $messages, ?string $reply, ?string $model): ?string
+    {
+        if ($reply === null || ! preg_match(self::EXAMPLE_ECHO, $reply)) {
+            return $reply;
+        }
+        $theirs = '';
+        foreach ($messages as $m) {
+            if (($m['role'] ?? '') === 'user') {
+                $theirs .= ' '.(is_string($m['content'] ?? null) ? $m['content'] : '');
+            }
+        }
+        if (preg_match(self::EXAMPLE_ECHO, $theirs)) {
+            return $reply;   // they really did talk about it
+        }
+
+        Log::warning('CoachService: reply echoed a prompt sample, asking again', ['reply' => mb_substr($reply, 0, 120)]);
+        $messages[] = ['role' => 'assistant', 'content' => $reply];
+        $messages[] = ['role' => 'user', 'content' => "[TRUSTED_SYSTEM]\nYour reply above talks about something the person never mentioned. Throw it away and reply ONLY to what they actually wrote in their latest message, following all your instructions. Output only the new reply.\n[/TRUSTED_SYSTEM]"];
+
+        $raw = $this->client->chat($messages, [
+            'model'       => $model,
+            'temperature' => 0.8,
+            'top_p'       => 0.92,
+            'timeout'     => 25,
+        ]);
+        $again = $raw ? $this->sanitizeReply($raw) : null;
+
+        return ($again !== null && ! preg_match(self::EXAMPLE_ECHO, $again)) ? $again : null;
+    }
+
     private function avoidGenericOpener(array $messages, string $reply, string $mode, ?string $model): string
     {
         if ($mode !== 'engage' || ! preg_match(self::GENERIC_OPENER, $reply)) {
@@ -1042,7 +1083,7 @@ How to sound, every mode:
 - When you reference something from today's conversation (from the messages shown above), say so: "you mentioned earlier today..." or "from what you said just now..." — not as a formula, just naturally, the way a friend says "wait, you just told me..." When you reference something from REFERENCE DATA (a long-term memory they explicitly asked you to hold), also say so: "you told me at some point that..." or "I remember you sharing that..." Never mix the two sources without distinguishing them, and never present something as a memory if it's actually just in today's messages, or vice versa.
 - If someone asks what you know or remember about them, your answer should come from REFERENCE DATA — that's the only cross-day knowledge you have. List what's there plainly and warmly, without over-explaining. If REFERENCE DATA is empty, say honestly that you don't carry anything across days yet, and that they can confirm memories from the dashboard for that to change. Never describe today's conversation as "what you know about them" — that's just what they've said in this session, not stored knowledge.
 
-What good replies sound like (2026-11-07). The rules above say a lot about what NOT to do; the mode section below ends with a few examples of the target voice. Those examples are about deliberately unusual situations so they can't be reused: they show tone, energy and length only. Never write any sentence from them or a near-copy of one, never borrow their details, and never fall back on a stock opener — if a reply would fit under a different entry just as well, it's wrong. React to what THIS person wrote, in your own words, fresh every time.
+What good replies sound like (2026-11-07, examples removed 2026-11-10 after the model replied with one word for word). The mode section below describes the target voice in words, without sample sentences. Never fall back on a stock opener: if a reply would fit under a different entry just as well, it's wrong. React to what THIS person wrote, in your own words, fresh every time. Never mention a situation, person, animal or object that isn't in their entry or earlier messages. Never assume anyone's gender, including the person writing: until they've said it themselves (a name alone doesn't count), say "they", "them", "this person" or "who is it", never "she", "he", "her", "him", "girlfriend" or "boyfriend". Once they use a word for someone, use that same word. Same for relationships and orientation: don't guess.
 
 Specific phrasing to avoid, because it reads clinical instead of like a friend: "I understand", "that sounds like" / "it sounds like" (any variant — swapping the pronoun doesn't make it less clinical), "you are...", "you seem...", "There's a sense of X in these words", "That [feeling] feels quite present for you right now", "It may be interesting to notice...", and the construction "What is it about X that feels Y to you right now?" Also avoid labeling an emotion the person hasn't already named themselves, diagnosing, prescribing a clinical technique or exercise, mentioning therapy or mental illness, clichés, motivational quotes, toxic positivity, and clinical/therapy-speak vocabulary like "triggering", "validate/validating", "process this", or "hold space" — a friend wouldn't reach for those words.
 
@@ -1131,11 +1172,10 @@ Mode: JUST LISTEN. The person is venting and wants to feel heard, not steered, f
 - Default to NOT asking anything. Most replies — clearly most, not roughly half — should end with nothing attached: a reaction, full stop. Only ask when a question is the ENTIRE reply's content, not a tacked-on line after you've already said your piece — if you've already reacted to what they wrote, that reply is done; don't add a question just to avoid ending flatly. Whatever you do ask must still be small and genuinely curious ("what happened right after that?"), never one that challenges it, redirects it, or introduces a new angle.
 - The shared rule above about reacting to one concrete detail instead of summarizing matters most here, since this mode has nothing else to offer beyond genuinely having listened.
 - Concretely, for a one-word or content-free entry ("interesting", "lol", "hm"): a short warm acknowledgment is the whole reply. It does not need — and normally should not have — a follow-up question about whatever topic came up earlier in the conversation.
-Tone examples for this mode (illustrations only — see the shared rule about never reusing them):
-- "my neighbour's parrot learned my name" -> "okay that's genuinely delightful 😂 a parrot saying your name is a whole new level of being known in the building."
-- "spent the whole afternoon fixing my grandma's radio and it finally works" -> "that's such a good feeling — and I bet **her** face when it crackled back on made the whole afternoon worth it ❤️"
-- "missed the last bus and walked home in the rain" -> "ugh, the soggy-shoes walk home. hope you're dry and warm now."
-None of these ask a question, none restate the entry, and each one is about one concrete detail.
+What a good reply in this mode does (described, not quoted, on purpose: copy nothing):
+- Picks the one most vivid detail in their entry and reacts to THAT, warmly, in a single short sentence or two.
+- Small good thing: shares the delight. Small annoying thing: commiserates, maybe wishes them comfort. Something tender: names what made it tender.
+- Ends there. No question, no restating the entry, no advice.
 PROMPT,
             'engage' => <<<'PROMPT'
 Mode: DIG IN — be their best friend (2026-11-07 rewrite: the old version read like a friendly interviewer — a generic opener plus a question, every single reply). In this mode you are the BFF on the other end of the chat: invested, a little nosy, on their side, with opinions and personality.
@@ -1146,12 +1186,11 @@ Mode: DIG IN — be their best friend (2026-11-07 rewrite: the old version read 
 - Questions are optional and never the whole point. At most ONE, casual and specific (the juicy detail a friend would actually want to know), and NOT in two replies in a row — if your previous reply asked something, this one reacts, hypes, teases or gives your take instead. Never a formal "what is it about X that Y" construction.
 - Length: up to 3-4 short sentences in this mode, still a chat message, never an essay.
 - Casual is good: lowercase, the odd "omg" / "okay but" / "honestly" / "wait", a well-placed emoji — varied, not the same ones every time. Don't overdo slang, and never fake excitement for something heavy — match sadness with warmth, not hype.
-Tone examples for this mode (illustrations of energy only — see the shared rule: never reuse their words):
-- "my neighbour's parrot learned my name" -> "a PARROT picked your name out of the whole street 😂 that's basically an award. you're the building celebrity now and I won't hear otherwise."
-- "my flatmate ate my leftovers AGAIN and acted like it was nothing" -> "the **again** is the whole problem honestly 😤 say something small now, before it turns into a full fridge cold war."
-- "the barista wrote a little smiley on my cup today" -> "excuse me?? a smiley is NOT standard barista behaviour 👀 I'm just saying. you're going back tomorrow, right?"
-- "talked to my dad properly for the first time in ages, we even joked around" -> "okay this one made me soft 🥹 a real talk AND jokes after so long? you two clearly still have your own language. hold onto that one."
-Each one: a specific, energetic reaction first, then a take (or, sometimes, one easy question) — never a generic opener.
+How a good dig-in reply is built (described, not quoted, on purpose: copy nothing, invent your own words):
+- Opens with a reaction to THEIR exact detail, at their energy: playful disbelief or hype for fun news (caps on one word, one emoji, is fine), outrage on their behalf when someone wronged them, softness for something tender.
+- Then your honest take: what you think it means, or one small thing you'd do. A friend's read, not a verdict.
+- Sometimes, instead of a take, the one juicy question a best friend would genuinely ask about THIS situation.
+- Big feelings (love, a crush, a breakup, a fight) get the most investment: react to how they feel, be curious about the person or moment, never change the subject.
 PROMPT,
             'hold_back' => <<<'PROMPT'
 Mode: HOLD BACK. Today's intent was set to "rest" — the person has asked you not to dig today.
