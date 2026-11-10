@@ -61,7 +61,14 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
 
-        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+        // 2026-11-10: PostgreSQL compares emails case-sensitively (SQLite
+        // didn't) -- "Elaa@..." vs "elaa@..." failed. Try as typed, then
+        // lowercased.
+        $credentials['email'] = trim($credentials['email']);
+        $ok = Auth::attempt($credentials, $request->boolean('remember'))
+            || Auth::attempt(['email' => strtolower($credentials['email'])] + $credentials, $request->boolean('remember'));
+
+        if (! $ok) {
             throw ValidationException::withMessages([
                 'email' => __('auth.failed'),
             ]);

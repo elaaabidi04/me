@@ -115,6 +115,14 @@ class DemoSandbox
     // 2026-11-10: a demo copy gets config('demo.entries_per_visitor')
     // journal entries (AI tries) for its whole 24h life.
 
+    /** 2026-11-10: the admin's own test sessions (POST /api/admin/demo-login) have no caps. */
+    public static function unlimited(?\Illuminate\Http\Request $request = null): bool
+    {
+        $request ??= request();
+
+        return $request->hasSession() && (bool) $request->session()->get('demo_unlimited');
+    }
+
     public static function triesKey(User $user): string
     {
         return 'demo-entries:'.$user->id;

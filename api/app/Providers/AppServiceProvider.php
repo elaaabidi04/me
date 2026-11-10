@@ -27,8 +27,8 @@ class AppServiceProvider extends ServiceProvider
         // the limit is keyed by IP, not user id. Real accounts are
         // unaffected (they keep only their existing per-route throttles).
         RateLimiter::for('demo-ai', function (Request $request) {
-            if (! $request->user()?->is_demo) {
-                return Limit::none();
+            if (! $request->user()?->is_demo || \App\Support\DemoSandbox::unlimited($request)) {
+                return Limit::none();   // real accounts, and the admin's own test sessions
             }
 
             // 2026-11-08: the cap is now PER DEMO COPY (each visitor's own

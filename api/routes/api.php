@@ -38,12 +38,20 @@ Route::middleware('auth:sanctum')->group(function () {
     // --- Admin (2026-10-25) -- owner-only view of what visitors wrote in
     // the public demo accounts. See AdminController + config/demo.php.
     Route::get('/admin/activity', [AdminController::class, 'activity'])->middleware('admin');
+    // 2026-11-10: the admin opens a demo copy with no entry / AI caps
+    Route::post('/admin/demo-login', [DemoController::class, 'adminLogin'])->middleware('admin');
     Route::get('/user', function (Request $request) {
         $user = $request->user()->load('preferences');
         // 2026-11-10: how many demo entries this visitor has left
-        return $user->is_demo
-            ? array_merge($user->toArray(), ['demo_tries_left' => \App\Support\DemoSandbox::triesLeft($user)])
-            : $user;
+        if (! $user->is_demo) {
+            return $user;
+        }
+        $unlimited = \App\Support\DemoSandbox::unlimited($request);
+
+        return array_merge($user->toArray(), [
+            'demo_tries_left' => $unlimited ? null : \App\Support\DemoSandbox::triesLeft($user),
+            'demo_unlimited'  => $unlimited,   // 2026-11-10: the admin testing
+        ]);
     });
 
     // --- Entries ------------------------------------------------------------

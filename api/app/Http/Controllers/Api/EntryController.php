@@ -82,7 +82,7 @@ class EntryController extends Controller
         // entries (= AI replies) per demo copy. Crisis language is never
         // turned away, even with no tries left.
         $user = $request->user();
-        if ($user->is_demo) {
+        if ($user->is_demo && ! DemoSandbox::unlimited($request)) {
             $isCrisis = app(CoachService::class)->isCrisisText($data['body']);
             if (! $isCrisis && DemoSandbox::triesLeft($user) <= 0) {
                 return response()->json([
