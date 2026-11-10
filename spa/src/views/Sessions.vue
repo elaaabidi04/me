@@ -320,7 +320,6 @@ function formatSelectedDate(key) {
           <button class="ghost current">sessions</button>
           <span class="bar-sep"></span>
         </template>
-        <button class="ghost" @click="cycleTheme">◐ theme</button>
       </div>
     </header>
 

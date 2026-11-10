@@ -3,6 +3,7 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import api from '../lib/api'
+import SpotlightTour from '../components/SpotlightTour.vue'
 import {
   humanize, warm, NEED_WORDS, PROTECTIVE_WORDS, BEHAVIOR_WORDS,
   THINKING_PATTERN_WORDS, EMOTION_TONE, BEHAVIOR_TONE,
@@ -10,6 +11,60 @@ import {
 
 const router = useRouter()
 const auth = useAuthStore()
+
+// 2026-11-07: guided spotlight tour -- auto-starts once for demo accounts,
+// replayable for everyone from the "tour" button in the top bar.
+const tour = ref(null)
+const tourSteps = [
+  { title: 'learn it by doing.',
+    body: "a fake journal, four months deep. click anything, nothing breaks." },
+  { target: '[data-tour="picks"]', advanceOnClick: true,
+    title: 'set the vibe',
+    body: 'dig in: honest takes. just listen: quiet support.',
+    try: 'pick one' },
+  { target: '[data-tour="note"]', interactive: true,
+    title: 'me noticed something',
+    body: "it asks before remembering anything. your call.",
+    try: 'confirm or skip it, then next' },
+  { target: '.card.strats',
+    title: "what's helped before",
+    body: 'things that worked for her, kept for hard days.' },
+  { target: '.constellation .category-bubble', advanceOnClick: true,
+    title: 'threads you\'ve named',
+    body: 'people, places and topics from her writing.',
+    try: 'tap a bubble' },
+  { target: '.constellation .node-group', advanceOnClick: true, wait: 900,
+    title: 'go one level deeper',
+    body: 'each dot is something she keeps writing about.',
+    try: 'tap a name' },
+  { target: '.thread-detail', interactive: true, wait: 1200,
+    title: 'its story',
+    body: 'sort it, see how it feels and what helped.',
+    try: 'scroll it, then next' },
+  { target: '[data-tour="breakdown"] .pictorial-btn', advanceOnClick: true,
+    title: 'feelings, counted',
+    body: 'pulled from her entries. no questionnaires.',
+    try: 'tap a feeling' },
+  { target: '.emotion-drawer', interactive: true, wait: 1200,
+    title: 'the why',
+    body: 'what came with it, and what followed.' },
+  { target: '[data-tour="patterns"] .chain-link-btn', advanceOnClick: true,
+    title: 'patterns',
+    body: 'trigger, then feeling, then reaction, on repeat.',
+    try: 'tap a trigger' },
+  { target: '.pattern-drawer', interactive: true, wait: 1200,
+    title: 'the receipts',
+    body: 'the actual entries behind the pattern.' },
+  { target: '[data-tour="nav-journal"]',
+    title: 'your turn',
+    body: 'write anything. the coach replies in seconds.' },
+  { target: '[data-tour="nav-monthly"]',
+    title: 'zoom out',
+    body: 'months of trends at a glance.' },
+  { target: '[data-tour="tour-btn"]', doneLabel: "let's go",
+    title: 'replay anytime',
+    body: 'right here.' },
+]
 
 /* ---- theming ------------------------------------------------------ */
 const themes = ['dusk', 'paper', 'night']
@@ -248,7 +303,12 @@ function confirmWithContext() {
 async function loadCanonEvent(attempt = 0) {
   if (attempt > 20) return  // safety: stop if many consecutive blank suggestions
   try {
-    const { data } = await api.get('/api/canon-events/pending')
+    const res = await api.get('/api/canon-events/pending')
+    // 2026-10-15: "nothing pending" comes back as {} (Laravel serialises a
+    // null response()->json() as an empty object), which is truthy -- so
+    // without the id check this PATCHed /api/canon-events/undefined 21
+    // times on every dashboard load.
+    const data = res.data?.id ? res.data : null
     if (data && !data.description) {
       // no description to surface — dismiss silently and try the next one
       await api.patch(`/api/canon-events/${data.id}`, { status: 'dismissed' }).catch(() => {})
@@ -1213,11 +1273,11 @@ onMounted(async () => {
       <img class="wordmark" src="/logo.png" alt="me" />
       <div class="bar-actions">
         <button class="ghost current">dashboard</button>
-        <button class="ghost" @click="router.push({ name: 'journal' })">journal</button>
+        <button class="ghost" data-tour="nav-journal" @click="router.push({ name: 'journal' })">journal</button>
         <button class="ghost" @click="router.push({ name: 'calendar' })">calendar</button>
-        <button class="ghost" @click="router.push({ name: 'memories' })">memories</button>
-        <button class="ghost" @click="router.push({ name: 'monthly' })">monthly</button>
-        <button class="ghost" @click="router.push({ name: 'my-therapist' })">therapist</button>
+        <button class="ghost" data-tour="nav-memories" @click="router.push({ name: 'memories' })">memories</button>
+        <button class="ghost" data-tour="nav-monthly" @click="router.push({ name: 'monthly' })">monthly</button>
+        <button class="ghost" data-tour="nav-therapist" @click="router.push({ name: 'my-therapist' })">therapist</button>
         <button
           v-if="pendingTaskCount > 0" class="ghost task-pill"
           @click="router.push({ name: 'tasks' })"
@@ -1226,7 +1286,7 @@ onMounted(async () => {
           v-if="soonSession" class="ghost task-pill"
           @click="router.push({ name: 'sessions' })"
         >session soon</button>
-        <button class="ghost" @click="cycleTheme">◐ theme</button>
+        <button class="ghost" data-tour="tour-btn" @click="tour?.start()">tour</button>
         <button class="ghost" @click="handleLogout">log out</button>
       </div>
     </header>
@@ -1237,7 +1297,7 @@ onMounted(async () => {
         <section class="intro">
           <h1 class="greeting">{{ greeting }}{{ auth.user ? ' ' + auth.user.name.split(' ')[0].toLowerCase() : '' }}</h1>
           <p class="ask">what do you want from me today?</p>
-          <div class="picks" role="group" aria-label="today's intent">
+          <div class="picks" data-tour="picks" role="group" aria-label="today's intent">
             <button
               v-for="p in picks" :key="p.id"
               class="pill" :class="{ on: todaysPick === p.id }"
@@ -1247,7 +1307,7 @@ onMounted(async () => {
         </section>
 
         <!-- gentle note: trigger / valence / strategy / canon-event -->
-        <section class="note" v-if="activeNote">
+        <section class="note" data-tour="note" v-if="activeNote">
           <span class="note-label">a gentle note</span>
           <template v-if="!contextMode">
             <p class="note-text">{{ activeNote.text }}</p>
@@ -1341,7 +1401,7 @@ onMounted(async () => {
         </section>
 
         <!-- threads constellation -->
-        <section class="card threads">
+        <section class="card threads" data-tour="threads">
           <span class="threads-label">threads you've named</span>
 
           <div v-if="entitiesLoading" class="threads-empty">loading…</div>
@@ -1519,7 +1579,7 @@ onMounted(async () => {
       <aside class="side-col">
 
         <!-- weekly stats card — always shows live data; insights only unlock Sunday -->
-        <section class="card reflect">
+        <section class="card reflect" data-tour="week">
           <span class="seal-eyebrow">this week</span>
 
           <template v-if="liveLoading">
@@ -1555,7 +1615,7 @@ onMounted(async () => {
 
     <!-- live weekly stats — full width, always visible once data loads -->
     <div class="showcase-wrap" v-if="showV2Showcase">
-      <section class="card v2-showcase">
+      <section class="card v2-showcase" data-tour="breakdown">
         <h2 class="showcase-title">this week, so far</h2>
 
         <div class="showcase-grid">
@@ -1643,7 +1703,7 @@ onMounted(async () => {
                       <li v-for="p in emotionDrawer.top_patterns" :key="p">{{ warm(THINKING_PATTERN_WORDS, p) }}</li>
                     </ul>
                   </div>
-                  <button class="drawer-link" @click="router.push('/calendar')">explore in calendar →</button>
+                  <button class="drawer-link" :disabled="auth.user?.is_demo" :title="auth.user?.is_demo ? 'off in the demo' : null" @click="router.push('/calendar')">explore in calendar →</button>
                 </template>
               </div>
             </transition>
@@ -1784,7 +1844,7 @@ onMounted(async () => {
          not causation: shown as a flow, described as "tends to show up
          with", never "causes". -->
     <div class="showcase-wrap">
-      <section class="card v2-showcase patterns-card">
+      <section class="card v2-showcase patterns-card" data-tour="patterns">
         <h2 class="showcase-title">patterns across your entries</h2>
         <p class="patterns-sub muted">not cause and effect — just what tends to show up together, the more you write.</p>
 
@@ -1869,7 +1929,7 @@ onMounted(async () => {
                       <span v-if="drill.field === 'emotion' && e.items?.[0]?.intensity != null" class="entry-card-meta">intensity {{ e.items[0].intensity }}/10</span>
                       <span v-if="drill.field === 'behavior' && e.items?.[0]?.impact != null" class="entry-card-meta">impact {{ e.items[0].impact }}/10</span>
                       <span v-if="e.moment_linked" class="entry-card-badge tone-positive" title="the trigger and this tag were flagged in the same part of the entry, not just somewhere in it">same moment</span>
-                      <button class="entry-card-link" @click="router.push('/analysis/' + e.id)">full breakdown →</button>
+                      <button class="entry-card-link" :disabled="auth.user?.is_demo" :title="auth.user?.is_demo ? 'off in the demo' : null" @click="router.push('/analysis/' + e.id)">full breakdown →</button>
                     </div>
                     <p class="entry-card-text">
                       <template v-for="(seg, si) in entrySegments(e)" :key="si">
@@ -1887,6 +1947,8 @@ onMounted(async () => {
         </template>
       </section>
     </div>
+
+    <SpotlightTour ref="tour" tour-id="client" :steps="tourSteps" :user-id="auth.user?.id" :auto-start="!!auth.user?.is_demo" />
   </div>
 </template>
 
@@ -2520,6 +2582,9 @@ onMounted(async () => {
   text-underline-offset:3px; padding:0; white-space:nowrap;
 }
 .entry-card-link:hover { color:var(--ink); }
+/* 2026-11-10: off in the demo */
+.drawer-link:disabled, .entry-card-link:disabled { opacity:.4; cursor:not-allowed; text-decoration:none; }
+.drawer-link:disabled:hover, .entry-card-link:disabled:hover { color:inherit; }
 .entry-card-text {
   font-size:14.5px; line-height:1.7; white-space:pre-wrap; word-break:break-word;
   margin:0;
@@ -2541,6 +2606,21 @@ onMounted(async () => {
   .panel-triggers .bar-label { width:120px; font-size:13px; }
   .trigger-helper { margin-left:134px; }
   .pie-wrap { flex-direction:column; align-items:flex-start; gap:20px; }
+}
+/* phones (2026-11-07): nothing in the dashboard may be wider than the
+   screen -- the dot rows had a fixed 104px + 104px + 214px of dots, and
+   pattern chips never wrapped their (sometimes long) labels. */
+@media (max-width: 640px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .showcase-grid { grid-template-columns: minmax(0, 1fr); }
+  .pictorial-row { gap: 8px; }
+  .pictorial-label { width: 84px; font-size: 13.5px; }
+  .pictorial-dots { gap: 3px; flex: 1 1 auto; min-width: 0; }
+  .pictorial-dots .dot { width: 10px; height: 10px; }
+  .pictorial-freq { width: 60px; font-size: 11px; white-space: normal; line-height: 1.3; }
+  .chain-flow { flex-wrap: wrap; row-gap: 8px; }
+  .chain-step { max-width: 100%; }
+  .chain-link { white-space: normal; text-align: center; max-width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .me, * { transition:none !important; } }
 </style>

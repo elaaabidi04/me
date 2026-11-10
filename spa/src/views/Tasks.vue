@@ -148,7 +148,6 @@ const completedTasks = computed(() => tasks.value.filter(t => t.completed_at))
           <button class="ghost" @click="router.push({ name: 'sessions', query: { client_id: clientId, name: clientName } })">sessions</button>
           <span class="bar-sep"></span>
         </template>
-        <button class="ghost" @click="cycleTheme">◐ theme</button>
       </div>
     </header>
 

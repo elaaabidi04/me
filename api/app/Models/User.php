@@ -39,6 +39,28 @@ class User extends Authenticatable
     ];
 
     /**
+     * 2026-10-15: lets the SPA show the "demo account" banner. Always
+     * false unless DEMO_MODE is on -- see config/demo.php.
+     *
+     * @var list<string>
+     */
+    protected $appends = ['is_demo', 'is_admin'];
+
+    /** 2026-10-25: the single owner account behind /admin -- see config/demo.php. */
+    public function getIsAdminAttribute(): bool
+    {
+        $admin = config('demo.admin_email');
+
+        return $admin !== null && $admin !== '' && strcasecmp($this->email, $admin) === 0;
+    }
+
+    public function getIsDemoAttribute(): bool
+    {
+        // 2026-10-25: any account inside a per-visitor sandbox.
+        return config('demo.enabled') && \App\Support\DemoSandbox::isDemoEmail($this->email);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

@@ -460,6 +460,15 @@ class SharedInsightController extends Controller
             'question' => ['required', 'string', 'max:2000'],
         ]);
 
+        // 2026-11-07: same hard block as journal entries (InjectionGuard)
+        if ($rule = \App\Support\InjectionGuard::match($validated['question'])) {
+            \App\Support\InjectionGuard::report($therapist, $validated['question'], $rule, 'therapist insights chat');
+            return response()->json([
+                'message' => "That question looked like an attempt to change how the assistant works, so it wasn't sent. Try asking about the client's shared insights directly.",
+                'blocked' => true,
+            ], 422);
+        }
+
         $shares = Share::where('user_id', $clientId)
             ->where('shareable_type', InsightSnapshot::class)
             ->whereNull('revoked_at')

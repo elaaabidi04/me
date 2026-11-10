@@ -7,6 +7,8 @@ const routes = [
   // theme system, and auth-aware CTAs. Logged-in visitors are bounced off
   // it below (same pattern as guestOnly), logged-out visitors just see it.
   { path: '/', alias: '/home', name: 'home', component: () => import('../views/Home.vue') },
+  // 2026-10-25: owner-only feed of what visitors wrote in the demo accounts.
+  { path: '/admin', name: 'admin', component: () => import('../views/Admin.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/login',      name: 'login',      component: () => import('../views/Login.vue'),      meta: { guestOnly: true } },
   { path: '/register',   name: 'register',   component: () => import('../views/Register.vue'),   meta: { guestOnly: true } },
   { path: '/onboarding', name: 'onboarding', component: () => import('../views/Onboarding.vue'), meta: { requiresAuth: true } },
@@ -69,8 +71,19 @@ router.beforeEach(async (to) => {
     return { name: auth.user?.role === 'therapist' ? 'therapist' : 'dashboard' }
   }
 
+  // 2026-10-15: hosted portfolio demo (VITE_DEMO_MODE=true) -- there is
+  // no sign-up; every "Start journaling" / "Join as a therapist" link ends
+  // up on the login page, which in demo mode is just the two test-account
+  // buttons (see Login.vue).
+  if (import.meta.env.VITE_DEMO_MODE === 'true' && to.name === 'register' && !auth.isAuthenticated) {
+    return { name: 'login' }
+  }
+
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return { name: 'login' }
+  }
+  if (to.meta.requiresAdmin && !auth.user?.is_admin) {
+    return { name: 'home' }
   }
   if (to.meta.guestOnly && auth.isAuthenticated) {
     return { name: 'dashboard' }

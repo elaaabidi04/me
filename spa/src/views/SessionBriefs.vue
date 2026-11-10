@@ -135,7 +135,6 @@ const revokedBriefs = computed(() => briefs.value.filter(b => b.revoked_at))
           <button class="ghost" @click="router.push({ name: 'sessions', query: { client_id: clientId, name: clientName } })">sessions</button>
           <span class="bar-sep"></span>
         </template>
-        <button class="ghost" @click="cycleTheme">◐ theme</button>
       </div>
     </header>
 

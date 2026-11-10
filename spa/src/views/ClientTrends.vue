@@ -216,7 +216,6 @@ const windowWeeks = computed(() => {
       <img class="wordmark" src="/logo.png" alt="me" />
       <div class="bar-actions">
         <button class="ghost" @click="router.push({ name: 'therapist' })">← practice</button>
-        <button class="ghost" @click="cycleTheme">◐ theme</button>
       </div>
     </header>
 

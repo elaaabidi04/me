@@ -10,7 +10,10 @@
 // The architectural rule this file exists to enforce is unchanged either
 // way: the LLM never generates this text itself, only config does.
 $contactName   = env('CRISIS_CONTACT_NAME', 'me');
-$contactNumber = env('CRISIS_CONTACT_NUMBER');
+// 2026-10-15: on the public hosted demo (DEMO_MODE=true) strangers can
+// trigger crisis mode, so the developer's personal number is never shown
+// there -- only the "contact local emergency services" fallback below.
+$contactNumber = env('DEMO_MODE', false) ? null : env('CRISIS_CONTACT_NUMBER');
 
 return [
     /*

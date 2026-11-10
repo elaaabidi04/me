@@ -314,7 +314,6 @@ const keptJson = computed(() => {
       <img class="wordmark" src="/logo.png" alt="me" />
       <div class="bar-actions">
         <button class="ghost" @click="router.push('/journal')">← journal</button>
-        <button class="ghost" @click="cycleTheme">◐ theme</button>
       </div>
     </header>
 

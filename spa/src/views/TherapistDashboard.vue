@@ -3,9 +3,45 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import api from '../lib/api'
+import SpotlightTour from '../components/SpotlightTour.vue'
 
 const router = useRouter()
 const auth   = useAuthStore()
+
+// 2026-11-07: guided spotlight tour -- auto-starts once for demo accounts,
+// replayable for everyone from the "tour" button in the top bar.
+const tour = ref(null)
+const tourSteps = [
+  { title: 'your practice, hands-on.',
+    body: 'five fake clients. click anything, nothing breaks.' },
+  { target: '[data-tour="stats"]',
+    title: 'at a glance',
+    body: 'clients, sessions this week, unreviewed flags.' },
+  { target: '.filter-chips', advanceOnClick: true,
+    title: 'sort your caseload',
+    body: 'who needs you, who has a session soon.',
+    try: 'tap a filter' },
+  { target: '.roster-list .client-row .row-head', advanceOnClick: true,
+    title: 'open a file',
+    body: 'everything a client chose to share.',
+    try: 'tap a client' },
+  // only exists if the previous step's row was actually opened
+  { target: '.roster-list .client-row.open .row-tabs', wait: 400,
+    title: 'all in one place',
+    body: 'crisis chat, briefs, insights, tasks, sessions, trends.' },
+  { target: '[data-tour="invite"]',
+    title: 'invite code',
+    body: 'clients link with it. they choose what you see.' },
+  { target: '[data-tour="attention"]',
+    title: 'needs attention',
+    body: 'unreviewed crisis flags. one click to the chat.' },
+  { target: '[data-tour="activity"]',
+    title: 'what changed',
+    body: 'new shares, finished tasks, new flags.' },
+  { target: '[data-tour="tour-btn"]', doneLabel: "let's go",
+    title: 'replay anytime',
+    body: 'right here.' },
+]
 
 const themes = ['dusk', 'paper', 'night']
 const theme  = ref('dusk')
@@ -383,9 +419,9 @@ function formatCalFoot(iso) {
     <header class="bar">
       <img class="wordmark" src="/logo.png" alt="me" />
       <div class="bar-actions">
-        <button class="ghost" @click="router.push({ name: 'sessions' })">calendar</button>
+        <button class="ghost" data-tour="nav-calendar" @click="router.push({ name: 'sessions' })">calendar</button>
         <button class="ghost" @click="router.push({ name: 'therapist-activity' })">activity</button>
-        <button class="ghost" @click="cycleTheme">◐ theme</button>
+        <button class="ghost" data-tour="tour-btn" @click="tour?.start()">tour</button>
         <button class="ghost" @click="handleLogout">log out</button>
       </div>
     </header>
@@ -403,7 +439,7 @@ function formatCalFoot(iso) {
 
       <template v-else>
         <!-- ---- stat strip ---- -->
-        <section class="stat-strip" aria-label="Practice summary">
+        <section class="stat-strip" data-tour="stats" aria-label="Practice summary">
           <div class="stat">
             <span class="stat-num">{{ clientCount }}</span>
             <span class="stat-label">{{ clientCount === 1 ? 'client' : 'clients' }}</span>
@@ -419,7 +455,7 @@ function formatCalFoot(iso) {
         </section>
 
         <!-- ---- invite bar ---- -->
-        <div class="invite-bar">
+        <div class="invite-bar" data-tour="invite">
           <div>
             <span class="invite-bar-label">invite code</span>
             <p class="invite-bar-hint">share this with a client so they can link their account to yours.</p>
@@ -434,7 +470,7 @@ function formatCalFoot(iso) {
         <div class="dash-grid">
           <!-- ---- main: client roster ---- -->
           <section class="roster">
-            <div class="roster-head">
+            <div class="roster-head" data-tour="roster-head">
               <span class="section-title">clients</span>
               <div v-if="clients.length" class="filter-chips">
                 <button
@@ -443,62 +479,6 @@ function formatCalFoot(iso) {
                   @click="activeFilter = f.id"
                 >{{ f.label }}<span class="chip-n">{{ filterCounts[f.id] }}</span></button>
               </div>
-            </div>
-
-            <!-- calendar + recent activity side by side -->
-            <div v-if="clients.length" class="cal-activity-row">
-              <div class="cal">
-                <div class="cal-head">
-                  <span class="cal-month">{{ calMonthLabel }}</span>
-                  <div class="cal-nav">
-                    <button class="cal-btn" @click="calPrev" aria-label="Previous month">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-                    </button>
-                    <button class="cal-btn" @click="calNext" aria-label="Next month">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                    </button>
-                  </div>
-                </div>
-                <Transition :name="calDir > 0 ? 'cal-next' : 'cal-prev'" mode="out-in">
-                  <div :key="calKey" class="cal-grid">
-                    <span v-for="dow in CAL_DOWS" :key="dow" class="cal-dow">{{ dow }}</span>
-                    <template v-for="(day, i) in calDays" :key="i">
-                      <button
-                        v-if="day !== null && sessionDaysInCalMonth.has(day)"
-                        class="cal-day cal-session"
-                        :class="{ 'cal-today': day === todayInCal }"
-                        @click="router.push({ name: 'sessions' })"
-                      >{{ day }}</button>
-                      <span
-                        v-else
-                        class="cal-day"
-                        :class="{ 'cal-today': day !== null && day === todayInCal }"
-                      >{{ day ?? '' }}</span>
-                    </template>
-                  </div>
-                </Transition>
-                <div v-if="calNextSession" class="cal-foot" @click="router.push({ name: 'sessions' })">
-                  <span class="cal-foot-dot"></span>
-                  <span><b>{{ formatCalFoot(calNextSession.scheduled_at) }}</b><template v-if="calNextSession.client?.name"> · {{ calNextSession.client.name }}</template></span>
-                </div>
-              </div>
-
-              <section class="card activity-inline">
-                <div class="card-head-row">
-                  <span class="card-title">recent activity</span>
-                  <button v-if="activity.length" class="see-all-btn" @click="router.push({ name: 'therapist-activity' })">see all →</button>
-                </div>
-                <p v-if="!activity.length" class="card-hint">nothing new since your caseload last changed.</p>
-                <ul v-else class="activity-list">
-                  <li
-                    v-for="e in activity.slice(0, 6)" :key="`${e.type}-${e.client_id}-${e.created_at}`" class="activity-item"
-                    @click="openClientChat({ client_id: e.client_id })"
-                  >
-                    <span class="activity-when">{{ formatActivityWhen(e.created_at) }}</span>
-                    <span class="activity-text"><strong>{{ e.client_name ?? 'a client' }}</strong> {{ activityCopy(e) }}</span>
-                  </li>
-                </ul>
-              </section>
             </div>
 
             <p v-if="!clients.length" class="state-hint">no one has linked to you yet. share your invite code to get started.</p>
@@ -563,20 +543,76 @@ function formatCalFoot(iso) {
 
           <!-- ---- sidebar ---- -->
           <aside class="sidebar">
-            <section v-if="needsAttention.length" class="card module-alert">
-              <span class="card-title">needs attention</span>
+            <section v-if="needsAttention.length" class="card module-alert" data-tour="attention">
+              <div class="card-head-row">
+                <span class="card-title">needs attention</span>
+                <span class="attn-total">{{ needsAttention.length }}</span>
+              </div>
               <ul class="attn-list">
-                <li
-                  v-for="c in needsAttention" :key="c.id" class="attn-item"
-                  @click="openClientChat(c)"
-                >
-                  <span class="attn-name">{{ c.client?.name }}</span>
-                  <span class="attn-count">{{ c.unreviewed_flags_count }} unreviewed</span>
+                <li v-for="c in needsAttention" :key="c.id">
+                  <button class="attn-item" type="button" @click="openClientChat(c)">
+                    <span class="attn-avatar">{{ initials(c.client?.name) }}</span>
+                    <span class="attn-name">{{ c.client?.name }}</span>
+                    <span class="attn-count">{{ c.unreviewed_flags_count }} unreviewed</span>
+                  </button>
                 </li>
               </ul>
             </section>
 
-            <section class="card">
+            <section class="card activity-card" data-tour="activity">
+              <div class="card-head-row">
+                <span class="card-title">recent activity</span>
+                <button v-if="activity.length" class="see-all-btn" @click="router.push({ name: 'therapist-activity' })">see all →</button>
+              </div>
+              <p v-if="!activity.length" class="card-hint">nothing new since your caseload last changed.</p>
+              <ul v-else class="activity-list">
+                <li
+                  v-for="e in activity.slice(0, 3)" :key="`${e.type}-${e.client_id}-${e.created_at}`" class="activity-item"
+                  @click="openClientChat({ client_id: e.client_id })"
+                >
+                  <span class="activity-when">{{ formatActivityWhen(e.created_at) }}</span>
+                  <span class="activity-text"><strong>{{ e.client_name ?? 'a client' }}</strong> {{ activityCopy(e) }}</span>
+                </li>
+              </ul>
+            </section>
+
+            <div v-if="clients.length" class="cal">
+              <div class="cal-head">
+                <span class="cal-month">{{ calMonthLabel }}</span>
+                <div class="cal-nav">
+                  <button class="cal-btn" @click="calPrev" aria-label="Previous month">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+                  <button class="cal-btn" @click="calNext" aria-label="Next month">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                </div>
+              </div>
+              <Transition :name="calDir > 0 ? 'cal-next' : 'cal-prev'" mode="out-in">
+                <div :key="calKey" class="cal-grid">
+                  <span v-for="dow in CAL_DOWS" :key="dow" class="cal-dow">{{ dow }}</span>
+                  <template v-for="(day, i) in calDays" :key="i">
+                    <button
+                      v-if="day !== null && sessionDaysInCalMonth.has(day)"
+                      class="cal-day cal-session"
+                      :class="{ 'cal-today': day === todayInCal }"
+                      @click="router.push({ name: 'sessions' })"
+                    >{{ day }}</button>
+                    <span
+                      v-else
+                      class="cal-day"
+                      :class="{ 'cal-today': day !== null && day === todayInCal }"
+                    >{{ day ?? '' }}</span>
+                  </template>
+                </div>
+              </Transition>
+              <div v-if="calNextSession" class="cal-foot" @click="router.push({ name: 'sessions' })">
+                <span class="cal-foot-dot"></span>
+                <span><b>{{ formatCalFoot(calNextSession.scheduled_at) }}</b><template v-if="calNextSession.client?.name"> · {{ calNextSession.client.name }}</template></span>
+              </div>
+            </div>
+
+            <section class="card" data-tour="this-week">
               <span class="card-title">this week</span>
               <p v-if="!thisWeekSessions.length" class="card-hint">nothing scheduled in the next 7 days.</p>
               <ul v-else class="week-list">
@@ -590,6 +626,8 @@ function formatCalFoot(iso) {
         </div>
       </template>
     </div>
+
+    <SpotlightTour ref="tour" tour-id="therapist" :steps="tourSteps" :user-id="auth.user?.id" :auto-start="!!auth.user?.is_demo" />
   </div>
 </template>
 
@@ -651,8 +689,6 @@ function formatCalFoot(iso) {
   gap:20px; flex-wrap:wrap; margin-bottom:28px;
 }
 /* calendar + activity side by side */
-.cal-activity-row { display:flex; gap:16px; align-items:flex-start; margin-bottom:18px; }
-.activity-inline { flex:1; min-width:0; margin-bottom:0; }
 .eyebrow {
   display:block; font-size:11px; font-weight:600; letter-spacing:.16em;
   text-transform:uppercase; color:var(--accent); margin-bottom:6px;
@@ -851,10 +887,10 @@ function formatCalFoot(iso) {
 .see-all-btn:hover { color:var(--accent-deep); }
 .card-hint { font-size:13px; color:var(--muted); margin:0; line-height:1.6; }
 
-/* activity feed — timeline */
+/* activity feed — timeline (2026-11-07: sidebar card, last 3 only) */
 .activity-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; }
 .activity-item {
-  position:relative; padding:0 0 16px 22px; cursor:pointer;
+  position:relative; padding:0 0 14px 22px; cursor:pointer;
 }
 .activity-item:last-child { padding-bottom:0; }
 .activity-item::before {
@@ -868,12 +904,15 @@ function formatCalFoot(iso) {
 }
 .activity-item:last-child::after { display:none; }
 .activity-when { display:block; font-size:11px; color:var(--muted); margin-bottom:2px; }
-.activity-text { display:block; font-size:13.5px; color:var(--ink-soft); line-height:1.4; }
+.activity-text {
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  font-size:13px; color:var(--ink-soft); line-height:1.45;
+}
 .activity-text strong { color:var(--ink); font-weight:600; }
 .activity-item:hover .activity-text { color:var(--ink); }
 
 /* this week */
-.week-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; }
+.week-list { list-style:none; margin:6px 0 0; padding:0; display:flex; flex-direction:column; }
 .week-item {
   display:flex; align-items:center; justify-content:space-between; gap:8px;
   font-size:13.5px; padding:8px 0; border-bottom:1px solid var(--line-soft);
@@ -882,18 +921,32 @@ function formatCalFoot(iso) {
 .week-when { color:var(--ink); font-weight:600; flex:0 0 auto; }
 .week-who { color:var(--muted); text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-/* needs attention */
-.attn-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px; }
+/* needs attention (2026-11-07: same avatar + filled badge language as the client rows) */
+.card.module-alert { padding:18px 14px 12px; }
+.card.module-alert .card-head-row { padding:0 6px; margin-bottom:8px; }
+.attn-total {
+  font-size:11px; font-weight:700; color:var(--ochre);
+  min-width:20px; height:20px; padding:0 6px; border-radius:999px;
+  display:grid; place-items:center; background:color-mix(in srgb, var(--ochre) 14%, transparent);
+}
+.attn-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px; }
 .attn-item {
-  display:flex; align-items:center; justify-content:space-between; gap:8px;
-  font-size:13.5px; padding:7px 10px; border-radius:10px; cursor:pointer;
+  width:100%; display:flex; align-items:center; gap:10px;
+  font:inherit; font-size:13.5px; text-align:left; color:inherit;
+  padding:8px 6px; border:none; background:none; border-radius:10px; cursor:pointer;
   transition:background .15s;
 }
 .attn-item:hover { background:var(--surface-2); }
-.attn-name { font-weight:600; color:var(--ink); }
+.attn-item:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+.attn-avatar {
+  flex:0 0 auto; width:28px; height:28px; border-radius:50%;
+  background:var(--accent-soft); color:var(--accent);
+  display:grid; place-items:center; font-size:11px; font-weight:600;
+}
+.attn-name { flex:1; min-width:0; font-weight:600; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .attn-count {
-  font-size:11px; font-weight:600; color:var(--ochre);
-  border:1px solid var(--ochre); border-radius:999px; padding:1px 8px; flex:0 0 auto;
+  flex:0 0 auto; font-size:11px; font-weight:600; color:var(--ochre);
+  background:var(--accent-soft); border:1px solid var(--line-soft); border-radius:999px; padding:2px 9px;
 }
 
 /* ---- calendar ----
@@ -905,7 +958,6 @@ function formatCalFoot(iso) {
   background:var(--surface); border:1px solid var(--line); border-radius:14px;
   box-shadow:var(--shadow); padding:18px;
   display:flex; flex-direction:column;
-  width:300px; flex-shrink:0;
 }
 .cal-head {
   display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;
@@ -927,7 +979,7 @@ function formatCalFoot(iso) {
   text-align:center; padding-bottom:6px;
 }
 .cal-day {
-  aspect-ratio:1; display:grid; place-items:center;
+  height:32px; display:grid; place-items:center;
   font-size:12.5px; color:var(--ink-soft); border-radius:8px;
 }
 .cal-day.cal-today {
@@ -963,9 +1015,11 @@ function formatCalFoot(iso) {
 
 /* ---- responsive ---- */
 @media (max-width:900px) {
-  .dash-grid { grid-template-columns:1fr; }
-  .cal-activity-row { flex-direction:column; }
-  .cal { width:100%; }
+  /* minmax(0,1fr), not 1fr: a plain 1fr track grows to its widest row
+     (the client rows / filter chips) and pushed the page past the screen */
+  .dash-grid { grid-template-columns:minmax(0,1fr); }
+  /* sidebar drops under the roster: two cards per row instead of four full-width slabs */
+  .sidebar { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); align-items:start; }
 }
 @media (max-width:640px) {
   .wrap { padding:32px 20px 80px; }
@@ -975,6 +1029,14 @@ function formatCalFoot(iso) {
   .head-search { width:100%; }
   .stat-strip { grid-template-columns:1fr; gap:10px; }
   .invite-bar { flex-direction:column; align-items:flex-start; }
+  .sidebar { grid-template-columns:1fr; }
+  /* client rows on phones (2026-11-07): drop the "next session" label and
+     let the date column shrink so name + date + flag + chevron fit */
+  .row-head { gap:10px; padding:10px 12px; }
+  .row-next { min-width:0; font-size:12px; }
+  .row-next-label { display:none; }
+  .row-flag { font-size:11px; padding:2px 8px; }
+  .row-panel-in { padding:12px 12px 12px; }
 }
 
 @media (prefers-reduced-motion:reduce) {

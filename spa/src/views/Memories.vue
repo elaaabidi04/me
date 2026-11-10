@@ -185,7 +185,6 @@ async function saveEdit(item, list) {
         <button class="ghost current">memories</button>
         <button class="ghost" @click="router.push({ name: 'monthly' })">monthly</button>
         <button class="ghost" @click="router.push({ name: 'my-therapist' })">therapist</button>
-        <button class="ghost" @click="cycleTheme">◐ theme</button>
         <button class="ghost" @click="handleLogout">log out</button>
       </div>
     </header>

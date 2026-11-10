@@ -61,7 +61,6 @@ function openChat(clientId) { router.push({ name: 'crisis-thread', query: { clie
       <img class="wordmark" src="/logo.png" alt="me" />
       <div class="bar-actions">
         <button class="ghost" @click="router.push({ name: 'therapist' })">← your practice</button>
-        <button class="ghost" @click="cycleTheme">◐ theme</button>
         <button class="ghost" @click="handleLogout">log out</button>
       </div>
     </header>

@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AnalysisCorrectionController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CanonEventController;
 use App\Http\Controllers\Api\CrisisThreadController;
 use App\Http\Controllers\Api\DailyIntentController;
 use App\Http\Controllers\Api\DailyReviewController;
+use App\Http\Controllers\Api\DemoController;
 use App\Http\Controllers\Api\EntryController;
 use App\Http\Controllers\Api\EntityController;
 use App\Http\Controllers\Api\MonthlyDashboardController;
@@ -24,11 +26,25 @@ use Illuminate\Support\Facades\Route;
 
 // --- Auth (Sanctum SPA / cookie-based session auth) -------------------
 Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1'); // 2026-10-25: also guards the admin password
+
+// --- Public demo (2026-10-15) -- one-click login into the seeded demo
+// accounts. 404s unless DEMO_MODE=true; see config/demo.php.
+Route::post('/demo/login', [DemoController::class, 'login'])->middleware('throttle:demo-login');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/user', fn (Request $request) => $request->user()->load('preferences'));
+
+    // --- Admin (2026-10-25) -- owner-only view of what visitors wrote in
+    // the public demo accounts. See AdminController + config/demo.php.
+    Route::get('/admin/activity', [AdminController::class, 'activity'])->middleware('admin');
+    Route::get('/user', function (Request $request) {
+        $user = $request->user()->load('preferences');
+        // 2026-11-10: how many demo entries this visitor has left
+        return $user->is_demo
+            ? array_merge($user->toArray(), ['demo_tries_left' => \App\Support\DemoSandbox::triesLeft($user)])
+            : $user;
+    });
 
     // --- Entries ------------------------------------------------------------
     // Rate-limited: nothing previously stopped rapid-fire entry creation,
@@ -38,7 +54,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // block scripted abuse.
     Route::get('/entries/dates', [EntryController::class, 'dates']); // before wildcard routes
     Route::get('/entries',       [EntryController::class, 'index']);
-    Route::post('/entries',      [EntryController::class, 'store'])->middleware('throttle:20,1');
+    Route::post('/entries',      [EntryController::class, 'store'])->middleware(['throttle:20,1', 'throttle:demo-ai']);
     Route::get('/entries/{entry}', [EntryController::class, 'show']); // after /entries/dates
 
     // --- Daily intent -----------------------------------------------------
@@ -100,20 +116,20 @@ Route::middleware('auth:sanctum')->group(function () {
     // pending-thinking-pattern above.
     Route::get('/canon-events/pending',       [CanonEventController::class, 'pending']);
     Route::get('/canon-events',               [CanonEventController::class, 'index']);
-    Route::patch('/canon-events/{canonEvent}', [CanonEventController::class, 'update']);
+    Route::patch('/canon-events/{canonEvent}', [CanonEventController::class, 'update'])->middleware('throttle:demo-ai'); // embeds via LLM on confirm
 
     // --- Therapist bridge: code-invite linking + crisis chat (2026-08-17) -
     // See docs/therapist-bridge.md. No wildcard-collision ordering concern
     // here (unlike pending/pending-thinking-pattern above) — grouped by
     // concern instead, linking routes then thread routes.
     Route::get('/therapist/invite-code',  [TherapistLinkController::class, 'inviteCode']);
-    Route::post('/therapist/invite-code', [TherapistLinkController::class, 'regenerateInviteCode']);
+    Route::post('/therapist/invite-code', [TherapistLinkController::class, 'regenerateInviteCode'])->middleware('demo.locked');
     // live-trends listed before the /link wildcard methods to avoid a
     // router trying to match 'live-trends' as a sub-resource of the base.
     Route::patch('/therapist/link/live-trends', [TherapistLinkController::class, 'toggleLiveTrends']);
     Route::get('/therapist/link',    [TherapistLinkController::class, 'show']);
-    Route::post('/therapist/link',   [TherapistLinkController::class, 'link']);
-    Route::delete('/therapist/link', [TherapistLinkController::class, 'unlink']);
+    Route::post('/therapist/link',   [TherapistLinkController::class, 'link'])->middleware('demo.locked');
+    Route::delete('/therapist/link', [TherapistLinkController::class, 'unlink'])->middleware('demo.locked');
 
     // 2026-08-19: dashboard "what changed" feed -- merges tasks/shares/
     // briefs/logged sessions across all currently-linked clients into one
@@ -132,7 +148,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // two-segment path so it never collides with /{share}'s single-
     // segment wildcard, but it's still listed first on principle (same
     // ordering discipline as daily-review's pending-before-wildcard).
-    Route::post('/shared-insights/chat/{clientId}',   [SharedInsightController::class, 'chat']);
+    Route::post('/shared-insights/chat/{clientId}',   [SharedInsightController::class, 'chat'])->middleware('throttle:demo-ai');
     Route::get('/shared-insights/client/{clientId}', [SharedInsightController::class, 'forClient']);
     Route::get('/shared-insights',                   [SharedInsightController::class, 'index']);
     Route::post('/shared-insights',                  [SharedInsightController::class, 'store']);

@@ -5,6 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Jobs\ExtractEntryJob;
 use App\Jobs\GenerateCoachMessageJob;
+use App\Models\CoachMessage;
+use App\Services\CoachService;
+use App\Services\EntryExtractionService;
+use App\Support\DemoSandbox;
+use App\Support\InjectionGuard;
 use App\Models\DailyReview;
 use Illuminate\Http\Request;
 
@@ -73,6 +78,23 @@ class EntryController extends Controller
             'in_vault'        => ['boolean'],
         ]);
 
+        // 2026-11-10: demo visitors get config('demo.entries_per_visitor')
+        // entries (= AI replies) per demo copy. Crisis language is never
+        // turned away, even with no tries left.
+        $user = $request->user();
+        if ($user->is_demo) {
+            $isCrisis = app(CoachService::class)->isCrisisText($data['body']);
+            if (! $isCrisis && DemoSandbox::triesLeft($user) <= 0) {
+                return response()->json([
+                    'message'    => "That's all ".config('demo.entries_per_visitor', 3)." demo entries used. Everything else (dashboard, threads, patterns, monthly) is still yours to explore.",
+                    'tries_left' => 0,
+                ], 429);
+            }
+            if (! $isCrisis) {
+                DemoSandbox::useTry($user);
+            }
+        }
+
         $entry = $request->user()->entries()->create([
             'body'            => $data['body'],
             'daily_intent_id' => $data['daily_intent_id'] ?? null,
@@ -90,6 +112,26 @@ class EntryController extends Controller
             ['user_id' => $request->user()->id, 'date' => $entry->created_at->toDateString()],
             ['last_activity_at' => $entry->created_at]
         );
+
+        // 2026-11-07: clear prompt-injection attempts never reach the AI.
+        // The entry is still saved (it's what they wrote, and it shows on
+        // /admin), but instead of the extraction + coach jobs it gets a fixed
+        // reply and a minimal "not analyzed" row, and the owner is emailed.
+        // Crisis language ALWAYS wins: an entry that reads as a crisis goes
+        // through normal crisis handling even if it also trips the guard.
+        $rule = InjectionGuard::match($data['body']);
+        if ($rule !== null && !$entry->in_vault && !app(CoachService::class)->isCrisisText($data['body'])) {
+            CoachMessage::create([
+                'entry_id' => $entry->id,
+                'mode'     => 'hold_back',
+                'body'     => InjectionGuard::reply($request->user()),
+                'reason'   => 'prompt_injection_blocked: '.$rule,
+            ]);
+            app(EntryExtractionService::class)->fallbackFor($entry, 'prompt_injection_blocked: '.$rule);
+            InjectionGuard::report($request->user(), $data['body'], $rule, 'journal entry');
+
+            return response()->json(array_merge($entry->load('coachMessage')->toArray(), ['blocked' => true]), 201);
+        }
 
         if (!$entry->in_vault) {
             // Both jobs are dispatched to the queue so the HTTP response returns

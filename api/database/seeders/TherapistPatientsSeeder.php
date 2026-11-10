@@ -27,16 +27,27 @@ use Illuminate\Support\Facades\Hash;
  */
 class TherapistPatientsSeeder extends Seeder
 {
-    public function run(): void
+    // 2026-10-25: per-visitor sandboxes pass their own therapist email and a
+    // token, so each sandbox gets its own copy of the 4 patients (see
+    // App\Support\DemoSandbox). No arguments = the old local behaviour.
+    private ?string $token = null;
+
+    private function email(string $name): string
     {
-        $therapist = User::where('email', 'therapist@example.com')->first();
+        return $this->token ? \App\Support\DemoSandbox::email($name, $this->token) : "{$name}@example.com";
+    }
+
+    public function run(?string $therapistEmail = null, ?string $token = null): void
+    {
+        $this->token = $token;
+        $therapist = User::where('email', $therapistEmail ?? 'therapist@example.com')->first();
 
         if (!$therapist) {
             $this->command->error('therapist@example.com not found — run DemoDataSeeder first.');
             return;
         }
 
-        if (User::where('email', 'nora@example.com')->exists()) {
+        if (User::where('email', $this->email('nora'))->exists()) {
             $this->command->warn('Therapist patients already seeded — skipping.');
             return;
         }
@@ -48,7 +59,7 @@ class TherapistPatientsSeeder extends Seeder
         $this->seedLina($therapist);
         $this->seedYassine($therapist);
 
-        $this->command->info('Done — 4 demo patients linked to therapist@example.com.');
+        $this->command->info("Done — 4 demo patients linked to {$therapist->email}.");
     }
 
     // ── Client 1: Nora Benyahia ──────────────────────────────────────────────
@@ -58,7 +69,7 @@ class TherapistPatientsSeeder extends Seeder
     {
         $client = User::create([
             'name'     => 'Nora Benyahia',
-            'email'    => 'nora@example.com',
+            'email'    => $this->email('nora'),
             'password' => Hash::make('password'),
             'role'     => 'client',
         ]);
@@ -92,7 +103,7 @@ class TherapistPatientsSeeder extends Seeder
     {
         $client = User::create([
             'name'     => 'Karim Ouali',
-            'email'    => 'karim@example.com',
+            'email'    => $this->email('karim'),
             'password' => Hash::make('password'),
             'role'     => 'client',
         ]);
@@ -152,7 +163,7 @@ class TherapistPatientsSeeder extends Seeder
     {
         $client = User::create([
             'name'     => 'Lina Marchand',
-            'email'    => 'lina@example.com',
+            'email'    => $this->email('lina'),
             'password' => Hash::make('password'),
             'role'     => 'client',
         ]);
@@ -202,7 +213,7 @@ class TherapistPatientsSeeder extends Seeder
     {
         $client = User::create([
             'name'     => 'Yassine Farhat',
-            'email'    => 'yassine@example.com',
+            'email'    => $this->email('yassine'),
             'password' => Hash::make('password'),
             'role'     => 'client',
         ]);

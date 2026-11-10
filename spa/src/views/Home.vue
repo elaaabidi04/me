@@ -1,5 +1,24 @@
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
+
+// 2026-10-15: public portfolio demo -- see api/config/demo.php.
+const demoEnabled = import.meta.env.VITE_DEMO_MODE === 'true'
+const router = useRouter()
+const auth = useAuthStore()
+const demoLoading = ref(false)
+async function tryDemo(role = 'client') {
+  demoLoading.value = true
+  try {
+    const user = await auth.loginAsDemo(role)
+    router.push({ name: user.role === 'therapist' ? 'therapist' : 'dashboard' })
+  } catch {
+    router.push({ name: 'login' }) // error message shows there
+  } finally {
+    demoLoading.value = false
+  }
+}
 
 /* ---- theming --------------------------------------------------------
    Same cycle as every authenticated page (Dashboard.vue etc) -- dusk is
@@ -26,7 +45,6 @@ function cycleTheme() {
           <a href="#therapists">For therapists</a>
         </nav>
         <div style="display:flex; align-items:center; gap:18px;">
-          <button class="ghost-btn" @click="cycleTheme" data-tip="Cycles the app's 3 real themes">◐ theme</button>
           <router-link :to="{ name: 'login' }" class="login-link">Log in</router-link>
           <router-link :to="{ name: 'register' }" class="btn btn-primary btn-sm" data-tip="Opens a blank entry — no signup wall">Start journaling</router-link>
         </div>
@@ -43,7 +61,8 @@ function cycleTheme() {
             <p class="lead">A private journal. An AI that notices quietly — and knows when to say nothing.</p>
             <div class="hero-ctas">
               <router-link :to="{ name: 'register' }" class="btn btn-primary" data-tip="Free, 2 minutes, no card needed">Start journaling — it's free</router-link>
-              <a href="#how" class="btn btn-ghost" data-tip="Jumps to the 3-step walkthrough">See how it works</a>
+              <button v-if="demoEnabled" type="button" class="btn btn-ghost" :disabled="demoLoading" @click="tryDemo('client')" data-tip="Logs you into a sample account with months of fictional entries">{{ demoLoading ? 'Opening demo…' : 'Try the live demo' }}</button>
+              <a v-else href="#how" class="btn btn-ghost" data-tip="Jumps to the 3-step walkthrough">See how it works</a>
             </div>
             <p class="microcopy">No credit card. Encrypted entries. Shared only if you choose to.</p>
           </div>
@@ -140,7 +159,7 @@ function cycleTheme() {
 
           <div class="demo-shell">
             <div class="demo-toolbar">
-              <span class="demo-label">step 02 in action — try "◐ theme" up top, this re-colors too</span>
+              <span class="demo-label">step 02 in action</span>
             </div>
             <div class="demo-grid">
               <div class="demo-card">
@@ -235,6 +254,7 @@ function cycleTheme() {
               <h2>A head start, not a replacement.</h2>
               <p>See only what your client explicitly shares — summaries, flagged patterns, a crisis channel. Nothing automatic.</p>
               <router-link :to="{ name: 'register', query: { role: 'therapist' } }" class="btn btn-primary" data-tip="Opens signup with the therapist role pre-selected">Join as a therapist</router-link>
+              <button v-if="demoEnabled" type="button" class="btn btn-ghost" :disabled="demoLoading" @click="tryDemo('therapist')" data-tip="Logs you into a sample therapist with a 5-client caseload">Try the therapist demo</button>
             </div>
             <div class="therapist-mini">
               <div class="row"><span class="dot"></span> Client shared this week's reflection — 2 hours ago</div>
@@ -392,6 +412,9 @@ function cycleTheme() {
   white-space:nowrap;
 }
 .home .btn:hover{transform:translateY(-1px);}
+.home button.btn{font-family:inherit;}
+.home button.btn:disabled{opacity:.6; cursor:default; transform:none;}
+.home .therapist-band .btn + .btn{margin:10px 0 0 10px;}
 .home .btn-primary{background:var(--accent-deep); color:var(--surface);}
 .home .btn-primary:hover{box-shadow:0 8px 20px -8px rgba(87,115,95,.55);}
 .home .btn-ghost{background:transparent; border-color:var(--line); color:var(--ink);}

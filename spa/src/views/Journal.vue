@@ -7,6 +7,8 @@ import { warm, NEED_WORDS, PROTECTIVE_WORDS, BEHAVIOR_WORDS, THINKING_PATTERN_WO
 
 const router = useRouter()
 const auth   = useAuthStore()
+// 2026-11-10: demo copies get a few entries; 0 left = compose is closed
+const noTriesLeft = computed(() => !!auth.user?.is_demo && auth.user.demo_tries_left === 0)
 async function handleLogout() { await auth.logout(); router.push({ name: 'home' }) }
 
 // 2026-08-18, added after a real report of "couldn't save"/"couldn't load"
@@ -214,16 +216,29 @@ async function send() {
     if (todayIntentId.value) payload.daily_intent_id = todayIntentId.value
     const { data } = await api.post('/api/entries', payload)
     entries.value.push(data)
+    // 2026-11-10: demo visitors get a few entries per demo copy
+    if (auth.user?.is_demo && typeof auth.user.demo_tries_left === 'number') {
+      auth.user.demo_tries_left = Math.max(0, auth.user.demo_tries_left - 1)
+    }
     text.value  = ''
+    // 2026-11-07: a blocked prompt-injection attempt comes back with its
+    // fixed reply already attached -- nothing to wait for
     saved.value = true
     setTimeout(() => (saved.value = false), 2200)
     await nextTick()
     scrollToBottom()
 
-    pendingCoach.value = data.id
-    pollCoach(data.id)
-  } catch {
-    sendError.value = 'could not reach the server — check that `php artisan serve` is running in api/.'
+    if (!data.coach_message) {
+      pendingCoach.value = data.id
+      pollCoach(data.id)
+    }
+  } catch (err) {
+    if (err.response?.status === 429) {
+      sendError.value = err.response.data?.message || 'demo limit reached.'
+      if (auth.user?.is_demo && err.response.data?.tries_left === 0) auth.user.demo_tries_left = 0
+    } else {
+      sendError.value = 'could not reach the server — check that `php artisan serve` is running in api/.'
+    }
   } finally {
     sending.value = false
   }
@@ -435,7 +450,6 @@ onUnmounted(() => { clearInterval(_resetTimer); if (crisisTimer) clearInterval(c
         <button class="ghost" @click="router.push({ name: 'memories' })">memories</button>
         <button class="ghost" @click="router.push({ name: 'monthly' })">monthly</button>
         <button class="ghost" @click="router.push({ name: 'my-therapist' })">therapist</button>
-        <button class="ghost" @click="cycleTheme">◐ theme</button>
         <button class="ghost" @click="handleLogout">log out</button>
       </div>
     </header>
@@ -573,7 +587,7 @@ onUnmounted(() => { clearInterval(_resetTimer); if (crisisTimer) clearInterval(c
                   <div class="review-drill-actions">
                     <span v-if="e.already_corrected" class="review-drill-done">✓ noted</span>
                     <button v-else class="ghost" @click="markTagWrong(e.entry_analysis_id, e.original_value)">not quite</button>
-                    <button class="ghost" @click="router.push('/analysis/' + e.entry_id)">full breakdown →</button>
+                    <button class="ghost" :disabled="auth.user?.is_demo" :title="auth.user?.is_demo ? 'off in the demo' : null" @click="router.push('/analysis/' + e.entry_id)">full breakdown →</button>
                   </div>
                 </div>
               </template>
@@ -589,13 +603,16 @@ onUnmounted(() => { clearInterval(_resetTimer); if (crisisTimer) clearInterval(c
         <textarea
           v-model="text"
           rows="3"
-          placeholder="whatever's here."
+          :placeholder="noTriesLeft ? 'that was your last demo entry — go explore the dashboard.' : 'whatever\'s here.'"
+          :disabled="noTriesLeft"
           @keydown="onKeydown"
         ></textarea>
         <div class="compose-foot">
+          <!-- 2026-11-07: demo visitors are reminded the owner can read this -->
+          <span v-if="auth.user?.is_demo" class="demo-visible">demo · visible to the developer<template v-if="typeof auth.user.demo_tries_left === 'number'"> · <b>{{ auth.user.demo_tries_left }}</b> {{ auth.user.demo_tries_left === 1 ? 'try' : 'tries' }} left</template></span>
           <span class="hint" :class="{ show: saved }">set down.</span>
           <span v-if="sendError" class="send-error">{{ sendError }}</span>
-          <button class="primary" :disabled="sending || !text.trim()" @click="send">
+          <button class="primary" :disabled="sending || !text.trim() || noTriesLeft" @click="send">
             {{ sending ? '…' : 'send' }}
           </button>
         </div>
@@ -649,6 +666,8 @@ onUnmounted(() => { clearInterval(_resetTimer); if (crisisTimer) clearInterval(c
 .crisis-text { margin:0; font-size:13.5px; line-height:1.5; color:var(--surface); max-width:520px; }
 .crisis-actions { display:flex; gap:6px; flex-shrink:0; }
 .crisis-actions .ghost { color:var(--surface); opacity:.85; }
+.review-drill-actions .ghost:disabled { opacity:.4; cursor:not-allowed; } /* 2026-11-10: off in the demo */
+.compose textarea:disabled { opacity:.6; cursor:not-allowed; }
 .crisis-actions .ghost:hover { opacity:1; background:rgba(255,255,255,.15); color:var(--surface); }
 .crisis-go { font-weight:500; opacity:1; }
 .intent-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
@@ -823,6 +842,7 @@ onUnmounted(() => { clearInterval(_resetTimer); if (crisisTimer) clearInterval(c
 .compose textarea::placeholder { color:var(--muted); opacity:.7; }
 .compose textarea:focus { border-color:var(--accent); }
 
+.demo-visible { font-size: 11.5px; color: var(--muted); margin-right: auto; }
 .compose-foot {
   display:flex; align-items:center; justify-content:flex-end;
   gap:12px; margin-top:8px;

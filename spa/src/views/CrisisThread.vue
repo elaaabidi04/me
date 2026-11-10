@@ -136,7 +136,6 @@ const timeline = computed(() => {
           <span class="bar-sep"></span>
           <button class="ghost" @click="router.push({ name: 'sessions' })">calendar</button>
           <button class="ghost" @click="router.push({ name: 'therapist-activity' })">activity</button>
-          <button class="ghost" @click="cycleTheme">◐ theme</button>
           <button class="ghost" @click="handleLogout">log out</button>
         </template>
         <template v-else>
@@ -145,7 +144,6 @@ const timeline = computed(() => {
           <button class="ghost" @click="router.push({ name: 'tasks' })">your tasks</button>
           <button class="ghost" @click="router.push({ name: 'session-briefs' })">brief session</button>
           <button class="ghost" @click="router.push({ name: 'sessions' })">sessions</button>
-          <button class="ghost" @click="cycleTheme">◐ theme</button>
           <button class="ghost" @click="handleLogout">log out</button>
         </template>
       </div>

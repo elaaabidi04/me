@@ -19,9 +19,25 @@ use Illuminate\Support\Facades\Hash;
 
 class DemoDataSeeder extends Seeder
 {
-    public function run(): void
+    /**
+     * $userId (2026-10-15): lets PublicDemoSeeder point this narrative at a
+     * dedicated demo account via $this->callWith(DemoDataSeeder::class,
+     * ['userId' => ...]). Kept as an int rather than a typed User param --
+     * the container would otherwise inject a blank new User() when nothing
+     * is passed. Omitted = old behaviour (first user in the table).
+     */
+    // 2026-10-25: per-visitor sandboxes (App\Support\DemoSandbox) each get
+    // their own therapist account + invite code; defaults keep the old
+    // single-account local behaviour.
+    private string $therapistEmail = 'therapist@example.com';
+    private string $inviteCode     = 'DEMOCARE';
+
+    public function run(?int $userId = null, ?string $therapistEmail = null, ?string $inviteCode = null): void
     {
-        $user = User::first();
+        $this->therapistEmail = $therapistEmail ?? $this->therapistEmail;
+        $this->inviteCode     = $inviteCode ?? $this->inviteCode;
+
+        $user = $userId ? User::find($userId) : User::first();
 
         if (!$user) {
             $this->command->error('No users found — register an account first, then reseed.');
@@ -183,7 +199,7 @@ class DemoDataSeeder extends Seeder
         }
 
         $therapist = User::firstOrCreate(
-            ['email' => 'therapist@example.com'],
+            ['email' => $this->therapistEmail],
             [
                 'name'     => 'Dr. Amel Chraiti',
                 'role'     => 'therapist',
@@ -193,7 +209,7 @@ class DemoDataSeeder extends Seeder
         // firstOrCreate only sets these on first INSERT — force them so a
         // partially-run prior seed (e.g. the account existed from
         // elsewhere) still ends up with the right demo role/code.
-        $therapist->forceFill(['role' => 'therapist', 'invite_code' => 'DEMOCARE'])->save();
+        $therapist->forceFill(['role' => 'therapist', 'invite_code' => $this->inviteCode])->save();
 
         $link = TherapistClient::create([
             'therapist_id' => $therapist->id,
@@ -235,7 +251,7 @@ class DemoDataSeeder extends Seeder
         $eventB->updated_at = $atB;
         $eventB->save();
 
-        $this->command->line("  Seeded: therapist bridge demo — log in as therapist@example.com / password to see the therapist side (client is already linked, invite code DEMOCARE).");
+        $this->command->line("  Seeded: therapist bridge demo — log in as {$this->therapistEmail} / password to see the therapist side (client is already linked, invite code {$this->inviteCode}).");
     }
 
     /**

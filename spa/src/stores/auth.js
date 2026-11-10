@@ -33,6 +33,24 @@ export const useAuthStore = defineStore('auth', {
         this.loading = false
       }
     },
+    // 2026-10-15: public demo -- one-click login into a seeded account
+    // (role: 'client' | 'therapist'). Only exists server-side when the API
+    // runs with DEMO_MODE=true; see api/config/demo.php.
+    async loginAsDemo(role) {
+      this.loading = true
+      this.error = null
+      try {
+        await ensureCsrfCookie()
+        const { data } = await api.post('/api/demo/login', { role })
+        this.user = data
+        return data
+      } catch (e) {
+        this.error = { email: [e.response?.data?.message ?? "The demo isn't available right now."] }
+        throw e
+      } finally {
+        this.loading = false
+      }
+    },
     async register(payload) {
       this.loading = true
       this.error = null

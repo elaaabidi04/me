@@ -15,6 +15,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // Lets the Vue SPA authenticate via cookies/session instead of API
         // tokens, as long as its origin is listed in SANCTUM_STATEFUL_DOMAINS.
         $middleware->statefulApi();
+
+        // 2026-10-15: blocks a few account-level actions for the shared
+        // public demo accounts -- see config/demo.php.
+        $middleware->alias([
+            'demo.locked' => \App\Http\Middleware\BlockInDemo::class,
+            'admin'       => \App\Http\Middleware\EnsureAdmin::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

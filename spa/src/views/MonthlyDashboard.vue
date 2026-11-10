@@ -348,7 +348,6 @@ const panels = computed(() => PANELS.map(buildPanel))
         <button class="ghost" @click="router.push({ name: 'memories' })">memories</button>
         <button class="ghost current">monthly</button>
         <button class="ghost" @click="router.push({ name: 'my-therapist' })">therapist</button>
-        <button class="ghost" @click="cycleTheme">◐ theme</button>
         <button class="ghost" @click="handleLogout">log out</button>
       </div>
     </header>
@@ -635,6 +634,12 @@ const panels = computed(() => PANELS.map(buildPanel))
 
 @media (max-width: 860px) {
   .wrap { padding: 32px 20px 80px; }
-  .trends-grid { grid-template-columns: 1fr; gap:28px; }
+  .trends-grid { grid-template-columns: minmax(0, 1fr); gap:28px; }
+}
+/* small phones (2026-11-07): title on one line, zoom + share wrap below it
+   instead of pushing the panel past the screen edge */
+@media (max-width: 480px) {
+  .panel-head { flex-wrap: wrap; row-gap: 8px; }
+  .panel-zoom { flex-wrap: wrap; }
 }
 </style>

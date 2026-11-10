@@ -469,14 +469,12 @@ function insightHighlights(item) {
           <span class="bar-sep"></span>
           <button class="ghost" @click="router.push({ name: 'sessions' })">calendar</button>
           <button class="ghost" @click="router.push({ name: 'therapist-activity' })">activity</button>
-          <button class="ghost" @click="cycleTheme">◐ theme</button>
           <button class="ghost" @click="handleLogout">log out</button>
         </template>
         <!-- Therapist at /my-insights without a client: simplified nav -->
         <template v-else-if="role === 'therapist'">
           <button class="ghost" @click="router.push({ name: 'sessions' })">calendar</button>
           <button class="ghost" @click="router.push({ name: 'therapist-activity' })">activity</button>
-          <button class="ghost" @click="cycleTheme">◐ theme</button>
           <button class="ghost" @click="handleLogout">log out</button>
         </template>
         <!-- Client: therapist-bridge tab strip -->
@@ -486,7 +484,6 @@ function insightHighlights(item) {
           <button class="ghost" @click="router.push({ name: 'tasks' })">your tasks</button>
           <button class="ghost" @click="router.push({ name: 'session-briefs' })">brief session</button>
           <button class="ghost" @click="router.push({ name: 'sessions' })">sessions</button>
-          <button class="ghost" @click="cycleTheme">◐ theme</button>
           <button class="ghost" @click="handleLogout">log out</button>
         </template>
       </div>
