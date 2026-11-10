@@ -1,0 +1,12 @@
+.git
+.env
+**/.env
+api/vendor
+api/storage/logs/*
+api/storage/framework/sessions/*
+api/storage/framework/views/*
+api/storage/framework/cache/*
+api/database/*.sqlite
+spa/node_modules
+spa/dist
+docs

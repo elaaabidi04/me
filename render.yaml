@@ -1,0 +1,35 @@
+# Render Blueprint (2026-11-10, see docs/deploy.md). Secrets marked
+# sync: false are asked for in the Render dashboard, never stored here.
+services:
+  - type: web
+    name: me-demo
+    runtime: docker
+    plan: free
+    region: frankfurt          # next to the Supabase database (eu-central-1)
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /up
+    envVars:
+      - { key: APP_NAME, value: me }
+      - { key: APP_ENV, value: production }
+      - { key: APP_DEBUG, value: "false" }
+      - { key: LOG_CHANNEL, value: stderr }
+      - { key: APP_KEY, sync: false }
+      - { key: APP_URL, sync: false }                  # https://<name>.onrender.com
+      - { key: SANCTUM_STATEFUL_DOMAINS, sync: false } # <name>.onrender.com (no https://)
+      - { key: FRONTEND_URL, sync: false }             # same as APP_URL
+      - { key: SESSION_DRIVER, value: database }
+      - { key: SESSION_SECURE_COOKIE, value: "true" }
+      - { key: CACHE_STORE, value: database }
+      - { key: QUEUE_CONNECTION, value: database }
+      - { key: DB_CONNECTION, value: pgsql }
+      - { key: DB_HOST, sync: false }                  # Supabase session pooler host
+      - { key: DB_PORT, value: "5432" }
+      - { key: DB_DATABASE, value: postgres }
+      - { key: DB_USERNAME, sync: false }              # postgres.<project-ref>
+      - { key: DB_PASSWORD, sync: false }
+      - { key: DB_SSLMODE, value: require }
+      - { key: DEMO_MODE, value: "true" }
+      - { key: DEMO_ENTRIES, value: "3" }
+      - { key: ADMIN_EMAIL, sync: false }
+      - { key: NVIDIA_API_KEY, sync: false }
+      - { key: MAIL_MAILER, value: log }

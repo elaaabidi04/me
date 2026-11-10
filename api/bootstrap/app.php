@@ -16,6 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // tokens, as long as its origin is listed in SANCTUM_STATEFUL_DOMAINS.
         $middleware->statefulApi();
 
+        // 2026-11-10: on the host (Render) HTTPS ends at its proxy -- trust it
+        // so Laravel builds https:// URLs and sets secure cookies.
+        $middleware->trustProxies(at: '*');
+
         // 2026-10-15: blocks a few account-level actions for the shared
         // public demo accounts -- see config/demo.php.
         $middleware->alias([
