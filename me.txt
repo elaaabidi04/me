@@ -1,0 +1,2 @@
+me
+supabase host : postgresql://postgres:lollaslife2004@db.jpdprxoolhojsilkhgkc.supabase.co:5432/postgres
