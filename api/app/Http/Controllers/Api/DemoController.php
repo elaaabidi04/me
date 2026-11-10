@@ -48,9 +48,14 @@ class DemoController extends Controller
             }
             RateLimiter::hit($key, 24 * 60 * 60);
 
-            $token = Str::lower(Str::random(12));
-            [$client, $therapist] = DemoSandbox::create($token);
-            $user  = $role === 'therapist' ? $therapist : $client;
+            // 2026-11-10: take a copy built ahead of time (instant); build
+            // one on the spot only if the pool is empty
+            $token = DemoSandbox::claim();
+            if (! $token) {
+                $token = Str::lower(Str::random(12));
+                DemoSandbox::create($token);
+            }
+            $user  = DemoSandbox::find($token, $role);
             $isNew = true;
         }
 

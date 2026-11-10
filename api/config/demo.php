@@ -32,6 +32,12 @@ return [
     // 2026-11-08: raised from 20 -- a school / office Wi-Fi is one IP for everyone on it.
     'max_sandboxes_per_ip_per_day' => (int) env('DEMO_MAX_SANDBOXES_PER_IP', 150),
 
+    // 2026-11-10: copies built ahead of time so a click logs in instantly
+    // (`demo:fill-pool`, every minute). Older ones are rebuilt so their
+    // "today" stays today.
+    'pool_size' => (int) env('DEMO_POOL_SIZE', 3),
+    'pool_max_age_hours' => (int) env('DEMO_POOL_MAX_AGE_HOURS', 4),
+
     // One-click demo logins per network per minute (a whole class at once).
     'logins_per_minute_per_network' => (int) env('DEMO_LOGINS_PER_MINUTE', 60),
 

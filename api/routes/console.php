@@ -4,6 +4,7 @@ use App\Models\User;
 use App\Support\DemoSandbox;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
@@ -90,6 +91,15 @@ Artisan::command('coach:try {text} {--mode=engage : engage (dig in) or witness (
 
 // Needs the host to run `php artisan schedule:run` every minute (cron) or
 // `php artisan schedule:work` as a worker process. No-op unless DEMO_MODE=true.
+// 2026-11-10: keep a few demo copies ready so a click logs in instantly
+Artisan::command('demo:fill-pool {--size= : how many ready copies to keep}', function () {
+    $size  = $this->option('size') !== null ? (int) $this->option('size') : null;
+    $built = DemoSandbox::fillPool($size);
+    $this->info("built {$built} demo cop".($built === 1 ? 'y' : 'ies').' · '.DB::table('demo_pool')->count().' ready');
+})->purpose('Pre-build demo sandboxes so test logins are instant');
+
+Schedule::command('demo:fill-pool')->everyMinute()->withoutOverlapping(10)->runInBackground();
+
 Schedule::command('demo:prune')
     ->hourly()
     ->when(fn () => config('demo.enabled'))

@@ -7,6 +7,8 @@ use Database\Seeders\PublicDemoSeeder;
 use Illuminate\Console\Command;
 use Illuminate\Console\OutputStyle;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\NullOutput;
 
@@ -92,6 +94,7 @@ class DemoSandbox
     /** Deletes every sandbox, plus the old shared demo accounts from before 2026-10-25. */
     public static function wipeAll(): int
     {
+        DB::table('demo_pool')->delete();
         self::forgetTries(User::where('email', 'like', '%@'.self::DOMAIN)->pluck('id'));
 
         return User::where('email', 'like', '%@'.self::DOMAIN)->delete()
@@ -135,5 +138,64 @@ class DemoSandbox
         foreach ($ids as $id) {
             \Illuminate\Support\Facades\RateLimiter::clear('demo-entries:'.$id);
         }
+    }
+
+    // ------------------------------------------------------------------
+    // 2026-11-10: a small pool of copies built AHEAD of time. Seeding one
+    // is ~700 queries -- seconds on a laptop, 20s+ on a small free host --
+    // so the scheduler keeps config('demo.pool_size') ready and a click
+    // just claims one.
+
+    /** Takes a ready copy out of the pool; null when it's empty. */
+    public static function claim(): ?string
+    {
+        for ($i = 0; $i < 5; $i++) {
+            $row = DB::table('demo_pool')->orderBy('id')->first();
+            if (! $row) {
+                return null;
+            }
+            // the DELETE is the lock: if another visitor got there first it
+            // removes 0 rows and we try the next one
+            if (DB::table('demo_pool')->where('id', $row->id)->delete() !== 1) {
+                continue;
+            }
+            if (! self::find($row->token, 'client')) {
+                continue;   // pruned or wiped in the meantime
+            }
+            // its 24h (and the "what did the visitor write" cut-off on
+            // /admin and in the coach's history) start now, not when built
+            User::where('email', 'like', '%.'.$row->token.'@'.self::DOMAIN)
+                ->update(['created_at' => now()]);
+
+            return $row->token;
+        }
+
+        return null;
+    }
+
+    /** Tops the pool up to $size; copies older than pool_max_age_hours are replaced. Returns how many were built. */
+    public static function fillPool(?int $size = null): int
+    {
+        $size ??= (int) config('demo.pool_size', 3);
+        $maxAge = (int) config('demo.pool_max_age_hours', 4);
+
+        // stale copies: their "today" has drifted -- throw them away
+        $stale = DB::table('demo_pool')->where('created_at', '<', now()->subHours($maxAge))->get();
+        foreach ($stale as $row) {
+            if (DB::table('demo_pool')->where('id', $row->id)->delete() === 1) {
+                self::forgetTries(self::users($row->token)->pluck('id'));
+                User::where('email', 'like', '%.'.$row->token.'@'.self::DOMAIN)->delete();
+            }
+        }
+
+        $built = 0;
+        while (DB::table('demo_pool')->count() < $size && $built < $size) {
+            $token = Str::lower(Str::random(12));
+            self::create($token);
+            DB::table('demo_pool')->insert(['token' => $token, 'created_at' => now()]);
+            $built++;
+        }
+
+        return $built;
     }
 }
