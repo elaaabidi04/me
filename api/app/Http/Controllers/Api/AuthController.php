@@ -66,7 +66,7 @@ class AuthController extends Controller
         // env vars) -- no shell or startup step needed on the server.
         $adminEmail = strtolower(trim((string) config('demo.admin_email')));
         $adminPass  = trim((string) config('demo.admin_password'));
-        if ($adminEmail !== '' && strlen($adminPass) >= 12
+        if ($adminEmail !== '' && strlen($adminPass) >= 10
             && strtolower(trim($credentials['email'])) === $adminEmail
             && hash_equals($adminPass, trim((string) $credentials['password']))) {
             $admin = User::whereRaw('lower(email) = ?', [$adminEmail])->first() ?? new User();

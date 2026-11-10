@@ -43,9 +43,9 @@ Artisan::command('admin:create {email?} {--from-env : non-interactive, password 
     // container start runs `admin:create --from-env` with ADMIN_PASSWORD
     $password = $this->option('from-env')
         ? trim((string) config('demo.admin_password'))   // a stray space/newline from the host's form
-        : $this->secret('Password for '.$email.' (min 12 characters)');
-    if (! $password || strlen($password) < 12) {
-        $this->error('Password must be at least 12 characters.');
+        : $this->secret('Password for '.$email.' (min 10 characters)');
+    if (! $password || strlen($password) < 10) {
+        $this->error('Password must be at least 10 characters.');
         return 1;
     }
 
