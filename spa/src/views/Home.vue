@@ -37,7 +37,7 @@ function cycleTheme() {
   <div class="me home" :data-theme="theme">
     <header class="nav">
       <div class="nav-inner wrap">
-        <div class="logo">me</div>
+        <img class="logo-img" src="/logo.png" alt="me" />
         <nav class="links">
           <a href="#how">How it works</a>
           <a href="#how">See it in action</a>
@@ -321,7 +321,7 @@ function cycleTheme() {
       <div class="wrap">
         <div class="footer-grid">
           <div>
-            <div class="logo">me</div>
+            <img class="logo-img logo-img--small" src="/logo.png" alt="me" />
             <p>A private journal with a calm AI companion — and an optional, consent-based bridge to your therapist.</p>
           </div>
           <div class="footer-col">
@@ -613,6 +613,11 @@ function cycleTheme() {
 .home footer{border-top:1px solid var(--line); padding:48px 0 32px;}
 .home .footer-grid{display:grid; grid-template-columns:1.4fr repeat(3,1fr); gap:32px; margin-bottom:36px;}
 .home .footer-grid .logo{margin-bottom:10px;}
+/* 2026-11-11: the real handwritten logo (same file as every other page's
+   header). The PNG has wide transparent padding, so the negative margins
+   trim it to the visible scribble. */
+.home .logo-img{display:block; height:118px; width:auto; margin:-45px 0 -47px -24px;}
+.home .logo-img--small{height:96px; margin:-36px 0 -30px -20px;}
 .home .footer-grid p{color:var(--muted); font-size:14px; max-width:260px;}
 .home .footer-col h4{font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:14px; font-weight:700;}
 .home .footer-col a{display:block; font-size:14px; color:var(--ink); text-decoration:none; margin-bottom:10px; opacity:.85;}
