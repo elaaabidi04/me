@@ -1,3 +1,8 @@
+# Class diagram
+
+The main models and how they relate. GitHub renders the diagram below; elsewhere, paste the code block into [mermaid.live](https://mermaid.live).
+
+```mermaid
 %%{init: {'theme':'base', 'themeVariables': {
   'primaryColor':'#ffffff',
   'primaryTextColor':'#1f2933',
@@ -223,3 +228,5 @@ classDiagram
     %% partage polymorphe
     Share ..> InsightSnapshot : cible partageable (morph)
     note for Share "shareable est polymorphe par conception (shareable_type +\nshareable_id), mais InsightSnapshot est aujourd'hui le seul\ntype partageable réellement créé — la colonne existe pour\nqu'un futur contenu partageable (ex. une chaîne de patterns)\nréutilise le même mécanisme de consentement/révocation sans\nnouvelle table."
+
+```

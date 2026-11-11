@@ -12,7 +12,7 @@ Sandbox accounts look like `maya.<token>@sandbox.demo`. The names below are the 
 - **Login page** in demo mode has no email/password form, just two buttons: **test user** and **test therapist**. The homepage hero also has "Try the live demo". One click logs them in.
 - **Client demo**: Maya Haddad (`demo@me.app`) has ~80 fictional entries over ~4 months. The arc runs: settling in, then a rough patch (workload, sleep, isolation), then climbing out (walks, Sarah, starting therapy), then the deadline arc from `DemoDataSeeder`. The weekly reflection is already unlocked, and the monthly trends have real ups and downs at every zoom level.
 - **Therapist demo**: Dr. Amel Chraiti (`therapist@example.com`) has a 5-client caseload: Maya plus the 4 from `TherapistPatientsSeeder`. It includes crisis threads, tasks, sessions, shared insights and briefs, and Maya's live trends are enabled.
-- A green banner on every page: *"Demo — your own private copy with fictional data, deleted after 24 hours."*
+- A green banner on every page: *"Demo — your own private copy with fictional data, deleted after 24 hours. Everything you write is visible to the developer."* (shortened on phones)
 
 ## Pieces
 
@@ -31,37 +31,11 @@ Everything is inert with `DEMO_MODE=false`, which is the local default.
 
 ## Deploy checklist
 
-API `.env` on the host:
-
-```
-APP_ENV=production
-APP_DEBUG=false
-DEMO_MODE=true
-DEMO_AI_PER_HOUR=15
-FRONTEND_URL=https://<your-spa-domain>
-SANCTUM_STATEFUL_DOMAINS=<your-spa-domain>
-SESSION_DOMAIN=.<shared-parent-domain>   # SPA and API must share a parent domain for the session cookie
-SESSION_SECURE_COOKIE=true
-NVIDIA_API_KEY=...                        # set a spending limit on this key
-```
-
-Then:
-
-```
-php artisan migrate --force
-php artisan demo:reset
-```
-
-Keep two processes running besides the web server:
-
-- `php artisan queue:work`: the entry extraction and coach reply jobs
-- `php artisan schedule:work`, or a cron entry `* * * * * php artisan schedule:run`: the nightly reset
-
-SPA build env: `VITE_API_URL=https://<your-api-domain>` and `VITE_DEMO_MODE=true`.
+Moved to **[`deploy.md`](deploy.md)** (2026-11-10): Supabase + Render, every environment variable, admin account, speed settings. The container's `deploy/start.sh` runs the migrations, the queue worker and the scheduler, so no extra processes need setting up by hand.
 
 ## Notes
 
-- `demo:reset` is safe to run any time. It only deletes users listed in `config('demo.emails')`, and everything else cascades off `users.id`.
+- `demo:reset` is safe to run any time. It only deletes sandbox accounts (`…@sandbox.demo`) and the old shared demo accounts, and everything else cascades off `users.id`.
 - A visitor whose sandbox expires while they're logged in just gets logged out. Their next click creates a fresh copy.
 - Fixed alongside this: `Dashboard.vue`'s `loadCanonEvent()` treated the API's empty `{}` ("nothing pending") as a memory. It fired `PATCH /api/canon-events/undefined` 21 times on every dashboard load. That was harmless locally, but on the demo it used up the visitor's AI allowance.
 

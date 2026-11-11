@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * itself was scaffolded on day one (2026-08-04, see docs/dev-log.md) as
  * part of a broader "therapist bridge" plan that was deprioritized to an
  * optional Week 4 sprint and never reached (see docs/build-roadmap.md,
- * docs/sujet-journal-ai (1).md §6/§10/§13). This model exists now because
+ * docs/sujet.md §6/§10/§13). This model exists now because
  * the user asked for a concrete, narrower slice of that plan: code-invite
  * linking plus a crisis chat. See docs/therapist-bridge.md.
  *

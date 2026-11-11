@@ -1,6 +1,12 @@
 # Never commit env files (2026-11-10)
 .env
 **/.env
+# personal notes with credentials (2026-11-11)
+me.txt
+*.secret.txt
+# Office lock / temp files
+~$*
+~WRL*.tmp
 
 # Laravel / API
 api/vendor/
