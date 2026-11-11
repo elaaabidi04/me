@@ -66,7 +66,7 @@ function scanBar() {
 function openMenu() {
   const els = [...document.querySelectorAll('header.bar .bar-actions > button, header.bar .bar-actions > a')]
   items.value = els
-    .map((el) => ({ el, label: el.textContent.trim(), current: el.classList.contains('current') }))
+    .map((el) => ({ el, label: el.textContent.trim(), tour: el.dataset.tour || null, current: el.classList.contains('current') }))
     .filter((it) => it.label)
   menuOpen.value = true
 }
@@ -76,6 +76,12 @@ function pick(it) {
 }
 const onMq = () => { phone.value = mq.matches; if (!mq.matches) menuOpen.value = false }
 const onKey = (e) => { if (e.key === 'Escape') menuOpen.value = false }
+// the tour opens/closes the menu on phones to show the real links (2026-11-11)
+const onTourMenu = (e) => {
+  if (!phone.value || !hasBar.value) return
+  if (e.detail?.open) openMenu()
+  else menuOpen.value = false
+}
 onMounted(() => {
   mq = window.matchMedia('(max-width: 640px)')
   onMq()
@@ -85,11 +91,13 @@ onMounted(() => {
   domObs.observe(document.body, { childList: true, subtree: true })
   scanBar()
   window.addEventListener('keydown', onKey)
+  window.addEventListener('me:phone-menu', onTourMenu)
 })
 onBeforeUnmount(() => {
   mq?.removeEventListener?.('change', onMq)
   domObs?.disconnect()
   window.removeEventListener('keydown', onKey)
+  window.removeEventListener('me:phone-menu', onTourMenu)
 })
 watch(() => route.fullPath, () => { menuOpen.value = false; nextTick(scanBar) })
 </script>
@@ -117,7 +125,7 @@ watch(() => route.fullPath, () => { menuOpen.value = false; nextTick(scanBar) })
   <nav v-if="phone && menuOpen" class="pm-sheet" aria-label="pages">
     <button
       v-for="(it, i) in items" :key="i" type="button"
-      class="pm-item" :class="{ current: it.current }"
+      class="pm-item" :class="{ current: it.current }" :data-tour-item="it.tour"
       @click="pick(it)"
     >{{ it.label }}</button>
   </nav>

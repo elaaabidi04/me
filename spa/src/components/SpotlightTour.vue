@@ -104,6 +104,7 @@ function start(from = 0) {
 defineExpose({ start })
 
 function close(completed = false) {
+  closeTourMenu()
   detachTarget()
   active.value = false
   rect.value = null
@@ -143,15 +144,40 @@ function waitForTarget(selector, myToken, waitMs = WAIT_MS) {
   })
 }
 
+// 2026-11-11: on phones the top-bar links live in the "menu" sheet
+// (App.vue). A step with `navItem: 'nav-journal'` lights the real button
+// when it's visible, otherwise opens the menu and lights that item in it.
+let tourOpenedMenu = false
+function setPhoneMenu(open) {
+  window.dispatchEvent(new CustomEvent('me:phone-menu', { detail: { open } }))
+}
+function closeTourMenu() {
+  if (tourOpenedMenu) { setPhoneMenu(false); tourOpenedMenu = false }
+}
+function isVisible(el) {
+  if (!el) return false
+  const r = el.getBoundingClientRect()
+  return r.width > 0 && r.height > 0
+}
+function stepTarget(s) {
+  if (!s.navItem) return s.target
+  if (isVisible(document.querySelector(`[data-tour="${s.navItem}"]`))) return `[data-tour="${s.navItem}"]`
+  setPhoneMenu(true)
+  tourOpenedMenu = true
+  return `.pm-item[data-tour-item="${s.navItem}"]`   // the menu button is only a fallback (see goTo)
+}
+
 async function goTo(i, dir) {
   const myToken = ++token
   detachTarget()
+  closeTourMenu()
 
   // walk in the current direction until a step with a visible target (or no target) is found
   while (i >= 0 && i < props.steps.length) {
     const s = props.steps[i]
-    if (!s.target) { index.value = i; rect.value = null; break }
-    const el = await waitForTarget(s.target, myToken, s.wait ?? WAIT_MS)
+    if (!s.target && !s.navItem) { index.value = i; rect.value = null; break }
+    let el = await waitForTarget(stepTarget(s), myToken, s.wait ?? WAIT_MS)
+    if (!el && s.navItem && myToken === token) el = findTarget('.phone-menu-btn')   // the item never showed up: point at the menu
     if (myToken !== token) return
     if (el) { index.value = i; attachTarget(el, s); break }
     i += dir
