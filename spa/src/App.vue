@@ -56,6 +56,7 @@ async function backToAdmin() {
 const phone = ref(false)
 const hasBar = ref(false)
 const menuOpen = ref(false)
+const menuByTour = ref(false)   // the tour opened it to light an item: keep it under the tour's overlay
 const items = ref([])
 let mq = null
 let domObs = null
@@ -79,8 +80,8 @@ const onKey = (e) => { if (e.key === 'Escape') menuOpen.value = false }
 // the tour opens/closes the menu on phones to show the real links (2026-11-11)
 const onTourMenu = (e) => {
   if (!phone.value || !hasBar.value) return
-  if (e.detail?.open) openMenu()
-  else menuOpen.value = false
+  if (e.detail?.open) { openMenu(); menuByTour.value = true }
+  else { menuOpen.value = false; menuByTour.value = false }
 }
 onMounted(() => {
   mq = window.matchMedia('(max-width: 640px)')
@@ -119,10 +120,10 @@ watch(() => route.fullPath, () => { menuOpen.value = false; nextTick(scanBar) })
     v-if="phone && hasBar"
     class="phone-menu-btn" type="button"
     :aria-expanded="menuOpen" aria-label="menu"
-    @click="menuOpen ? (menuOpen = false) : openMenu()"
+    @click="menuOpen ? (menuOpen = false) : (openMenu(), menuByTour = false)"
   ><span class="pm-lines" aria-hidden="true"></span>menu</button>
-  <div v-if="phone && menuOpen" class="pm-scrim" @click="menuOpen = false"></div>
-  <nav v-if="phone && menuOpen" class="pm-sheet" aria-label="pages">
+  <div v-if="phone && menuOpen" class="pm-scrim" :class="{ 'pm-above': !menuByTour }" @click="menuOpen = false"></div>
+  <nav v-if="phone && menuOpen" class="pm-sheet" :class="{ 'pm-above': !menuByTour }" aria-label="pages">
     <button
       v-for="(it, i) in items" :key="i" type="button"
       class="pm-item" :class="{ current: it.current }" :data-tour-item="it.tour"
@@ -169,6 +170,13 @@ watch(() => route.fullPath, () => { menuOpen.value = false; nextTick(scanBar) })
 .pm-lines::before, .pm-lines::after { content: ''; position: absolute; left: 0; }
 .pm-lines::before { top: -4px; } .pm-lines::after { top: 4px; }
 .pm-scrim { position: fixed; inset: 0; z-index: 1001; background: rgba(20,22,24,.18); }
+/* 2026-11-12: the tour's overlay (z 2000) used to swallow taps on the menu,
+   and the tour auto-starts for every visitor -- so on phones the menu was
+   unreachable until the tour ended. The button always sits above the tour;
+   the sheet too, unless the tour itself opened it to light an item. */
+.phone-menu-btn { z-index: 2100 !important; }
+.pm-scrim.pm-above { z-index: 2101; }
+.pm-sheet.pm-above { z-index: 2102 !important; }
 .pm-sheet {
   position: fixed; z-index: 1002;
   top: calc(var(--demo-h, 0px) + 54px); right: 14px; left: auto;
