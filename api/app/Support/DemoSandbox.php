@@ -86,6 +86,8 @@ class DemoSandbox
 
         $old = User::where('email', 'like', '%@'.self::DOMAIN)
             ->where('created_at', '<', now()->subHours($hours));
+        // 2026-11-15: keep what the visitors wrote (admin feed) before the copies go
+        DemoActivity::archive((clone $old)->get());
         self::forgetTries((clone $old)->pluck('id'));
 
         return $old->delete();
@@ -95,6 +97,7 @@ class DemoSandbox
     public static function wipeAll(): int
     {
         DB::table('demo_pool')->delete();
+        DemoActivity::archive(User::where('email', 'like', '%@'.self::DOMAIN)->get());   // 2026-11-15
         self::forgetTries(User::where('email', 'like', '%@'.self::DOMAIN)->pluck('id'));
 
         return User::where('email', 'like', '%@'.self::DOMAIN)->delete()

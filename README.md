@@ -1,8 +1,10 @@
 # me
 
-**A journaling companion that knows when to stay quiet.**
+**An AI journal that shows its work: it decides what to remember, asks before it does, and knows when to stay quiet.**
 
-You write about your day. **me** replies like a thoughtful friend, not a therapist and not a chatbot. It then quietly turns months of entries into patterns you can actually use. If you work with a therapist, you can choose, item by item, what they get to see.
+You write about your day. **me** replies like a thoughtful friend, not a therapist and not a chatbot. It then turns months of entries into patterns you can actually use. And it's never a black box: every entry comes with its breakdown, so you can see what the AI picked up and how confident it was, and correct it. If you work with a therapist, you choose, item by item, what they get to see.
+
+> Building AI isn't just about teaching it what to say. It's also about deciding what it should remember, what it should ask permission for, and when it should stay quiet.
 
 **Live demo:** [me-demo.onrender.com](https://me-demo.onrender.com). Click **test user** or **test therapist**: no sign-up, months of fictional data, your own private copy. The free server sleeps when idle, so the first visit can take about a minute to wake up.
 
@@ -10,13 +12,14 @@ You write about your day. **me** replies like a thoughtful friend, not a therapi
 
 ## Why it's different
 
-Most AI journals analyse everything you write. **me** is designed around *how the AI responds*, and it designs against over-analysis, because daily self-reflection can slide into rumination. Five principles drive every decision (full reasoning in [`docs/sujet.md`](docs/sujet.md)):
+Most AI journals analyse everything you write. **me** is designed around *how the AI responds*, and it designs against over-analysis, because daily self-reflection can slide into rumination. Six principles drive every decision (the first five are reasoned in full in [`docs/sujet.md`](docs/sujet.md)):
 
 1. **Reflections, not verdicts.** Patterns are offered ("does that ring true?"), never declared. You confirm, edit or dismiss them.
 2. **Depth by invitation.** Follow-ups are doors you can decline at no cost.
 3. **Guard against over-analysis.** The coach can decide *not* to dig, and suggest rest instead.
 4. **The response is the product.** Tone and timing matter more than feature count.
-5. **Consent gates every boundary.** Nothing reaches a therapist without an explicit, per-item yes.
+5. **Consent gates every boundary.** Nothing is remembered across days, and nothing reaches a therapist, without an explicit yes.
+6. **Show the work.** No black box: every entry comes with the breakdown behind it (emotions, triggers, what followed, the model's confidence, even its raw output), and you can confirm, correct or reject each part.
 
 ---
 
@@ -27,6 +30,7 @@ Most AI journals analyse everything you write. **me** is designed around *how th
 - **Crisis safety.** Signs of acute distress stop the coaching and surface human help. It deliberately over-triggers rather than miss something.
 - **Memory.** The app notices things worth remembering across days ("should I remember this?"). It only keeps them if you confirm.
 - **Dashboard.** Today's gentle note, your recurring threads (people, places, topics), what has helped before, the week's feelings and *trigger → feeling → what followed* pattern chains.
+- **Breakdowns you can see and correct.** For every entry: the emotions picked up, what triggered them, what followed, and the model's confidence. Wrong read? Confirm, change or reject it, and your patterns and dashboards use your correction.
 - **Monthly trends, calendar, daily breakdowns** of each day's entries.
 
 ### For the therapist
@@ -36,10 +40,22 @@ Most AI journals analyse everything you write. **me** is designed around *how th
 - **Tasks, scheduled sessions, session notes, pre-session briefs** and live client trends.
 
 ### For the public demo
-- **One click, private copy.** Every visitor gets their own sandbox of fictional data, deleted after 24h. Copies are pre-built so login is instant.
+- **One click, private copy.** Every visitor gets their own sandbox of fictional data, reset after 24h. Copies are pre-built so login is instant.
 - **Limits.** Visitors get 3 journal entries each, plus per-visitor AI rate limits.
 - **Prompt-injection blocking**, with an email alert to the admin.
-- **Admin page.** What visitors wrote, how often each test button was clicked, and unlimited test sessions for the owner.
+- **Admin page.** What visitors wrote (archived, so it outlives the 24h copies), how often each test button was clicked, and unlimited test sessions for the owner.
+
+---
+
+## Privacy by design
+
+A journal asks people to write about how they feel, so the public demo is built so that nobody has to trust it blindly. Full write-up, with the tests: [`docs/privacy-by-design.md`](docs/privacy-by-design.md).
+
+- **One private copy per visitor.** Each browser gets its own set of demo accounts, tied to a random 12-character token in an **encrypted, httpOnly cookie**. Visitors never share a journal.
+- **The server enforces it, not just the cookie.** Every request is checked against the logged-in account. Tested: a second visitor tried 11 ways to reach the first one's entries, threads, memories, sessions and AI insights, and all **11 were refused** (403/404).
+- **Copies really expire.** Each copy is deleted 24h after it's opened, and the delete cascades. Tested: 221 rows across 15 tables went to 0, with nothing orphaned.
+- **Honest about what's kept.** Visitors are told on screen that their copy resets after 24h, and that what they write is kept and visible to the developer (for spotting bugs and abuse). Entries are processed by the AI provider (NVIDIA NIM) to generate replies.
+- **Guardrails.** 3 entries per demo copy (crisis messages are never blocked), per-visitor AI rate limits, prompt-injection blocking, and no personal crisis number in demo mode.
 
 ---
 
@@ -128,6 +144,7 @@ npm run dev                # http://localhost:5173
 | `php artisan demo:reset` | Delete every demo sandbox |
 | `php artisan demo:fill-pool` | Pre-build demo copies |
 | `php artisan admin:create` | Create or update the `/admin` account (`ADMIN_EMAIL` in `.env`) |
+| `php artisan test --filter=SandboxIsolationTest` | Prove one demo visitor can't reach another's data (uses a throwaway in-memory database) |
 
 ---
 
@@ -146,6 +163,7 @@ Every file in [`docs/`](docs/), and what to read it for.
 |---|---|
 | [`sujet.md`](docs/sujet.md) | Understand the project: the problem, the five principles, designing against over-analysis, the two dashboards, the competitive landscape. **Read this first.** |
 | [`deploy.md`](docs/deploy.md) | Put it online: Supabase + Render, every variable, speed settings. |
+| [`privacy-by-design.md`](docs/privacy-by-design.md) | Understand how visitors are isolated (private cookie, per-visitor accounts, server-side checks, real expiry), what was tested, and what is honestly kept. |
 | [`public-demo.md`](docs/public-demo.md) | Learn how the demo works: per-visitor sandboxes, the admin page, the 3-entry limit, prompt-injection blocking, rate limits. |
 
 ### How the AI works
@@ -180,5 +198,5 @@ Every file in [`docs/`](docs/), and what to read it for.
 ## Safety notes
 
 - **me is not a medical device and does not diagnose.** Crisis language always routes to human help, and in demo mode it only points to local emergency services.
-- Demo visitors are told on screen that what they write is visible to the developer and deleted after 24h.
+- Demo visitors are told on screen that their copy resets after 24h, and that what they write is kept and visible to the developer.
 - Secrets live only in `.env` files (git-ignored) and the host's environment settings. Never commit keys or database passwords.

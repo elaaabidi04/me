@@ -105,9 +105,9 @@ watch(() => route.fullPath, () => { menuOpen.value = false; nextTick(scanBar) })
 
 <template>
   <div v-if="auth.user?.is_demo" ref="banner" class="demo-banner" role="status">
-    <span class="demo-long">Demo — your own private copy with fictional data, deleted after 24 hours. Everything you write is visible to the developer.</span>
+    <span class="demo-long">Demo — your own private copy with fictional data, reset after 24 hours. What you write is kept and visible to the developer.</span>
     <!-- 2026-11-07: one line on phones instead of two -->
-    <span class="demo-short">Demo · deleted after 24h · visible to the developer</span>
+    <span class="demo-short">Demo · resets after 24h · what you write is kept</span>
   </div>
   <router-view />
 

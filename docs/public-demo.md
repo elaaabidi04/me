@@ -12,7 +12,7 @@ Sandbox accounts look like `maya.<token>@sandbox.demo`. The names below are the 
 - **Login page** in demo mode has no email/password form, just two buttons: **test user** and **test therapist**. The homepage hero also has "Try the live demo". One click logs them in.
 - **Client demo**: Maya Haddad (`demo@me.app`) has ~80 fictional entries over ~4 months. The arc runs: settling in, then a rough patch (workload, sleep, isolation), then climbing out (walks, Sarah, starting therapy), then the deadline arc from `DemoDataSeeder`. The weekly reflection is already unlocked, and the monthly trends have real ups and downs at every zoom level.
 - **Therapist demo**: Dr. Amel Chraiti (`therapist@example.com`) has a 5-client caseload: Maya plus the 4 from `TherapistPatientsSeeder`. It includes crisis threads, tasks, sessions, shared insights and briefs, and Maya's live trends are enabled.
-- A green banner on every page: *"Demo — your own private copy with fictional data, deleted after 24 hours. Everything you write is visible to the developer."* (shortened on phones)
+- A green banner on every page: *"Demo — your own private copy with fictional data, reset after 24 hours. What you write is kept and visible to the developer."* (shortened on phones)
 
 ## Pieces
 
@@ -41,7 +41,7 @@ Moved to **[`deploy.md`](deploy.md)** (2026-11-10): Supabase + Render, every env
 
 ## Admin page (added 2026-10-25)
 
-`/admin` shows what visitors typed into their sandboxes: journal entries (with mood and the coach's reply), crisis-chat messages, therapist tasks, session notes and session briefs. Seeded data is hidden. It **only** reads the demo accounts, never real users' journals. Sandboxes are deleted after 24h, so it covers roughly the last day.
+`/admin` shows what visitors typed into their sandboxes: journal entries (with mood and the coach's reply), crisis-chat messages, therapist tasks, session notes and session briefs. Seeded data is hidden. It **only** reads the demo accounts, never real users' journals. Sandboxes are reset after 24h, but what visitors wrote is archived first (see the last section), so the feed keeps it.
 
 Setup, once per machine or server:
 
@@ -51,7 +51,7 @@ Setup, once per machine or server:
 
 Then on `/login`, click the small **admin** link under the test buttons and sign in. Anyone else who reaches `/admin` is sent to the homepage, and the API answers 404. `POST /api/login` is limited to 10 attempts a minute.
 
-Visitors are told on the demo screen that their copy is private from other visitors, visible to the developer, and deleted after 24h.
+Visitors are told on the demo screen that their copy is private from other visitors, resets after 24h, and that what they write is kept and visible to the developer.
 
 ## Sandbox commands (added 2026-10-25)
 
@@ -101,3 +101,13 @@ PHP needs the `pdo_pgsql` and `pgsql` extensions enabled in `php.ini`. Then run 
 
 - Each demo copy can write **3 journal entries** (`DEMO_ENTRIES`, default 3) over its whole 24h life. Each entry gets an AI reply. The journal shows "N tries left", and at 0 the compose box is closed. The API enforces it too (429). **Crisis entries are never blocked**, even at 0. The counter is `DemoSandbox::triesLeft()`, and `/api/user` returns it as `demo_tries_left`.
 - For demo users, **full breakdown →** (pattern drawer, journal review) and **explore in calendar →** (feeling drawer) are greyed out.
+
+## What visitors wrote is kept (added 2026-11-15)
+
+The 24h copies are still deleted on schedule, but **what the visitor wrote is copied into the `demo_archive` table first**, so `/admin` keeps showing it after the copy is gone. Archived items have an **archived** tag, and the page header shows how many there are.
+
+- **Where it happens.** `App\Support\DemoActivity::archive()` runs inside `DemoSandbox::prune()` (hourly) and `wipeAll()` (`demo:reset`), right before the accounts are deleted.
+- **What is kept.** Exactly what the feed showed: the visitor label, type, time, the author's demo name, the text, and the meta (mood, coach reply, blocked-attempt rule). The seeded story is never archived, and nothing links back to an account.
+- **No duplicates.** Each item has a unique fingerprint, so archiving twice is harmless.
+- **Retention.** `DEMO_ARCHIVE_DAYS=0` (the default) keeps everything forever. Set a number of days to auto-delete older archived items.
+- **Visitors are told.** The banner and the login note now say the copy resets after 24h and that what they write is kept and visible to the developer.

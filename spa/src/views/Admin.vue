@@ -1,6 +1,6 @@
 <script setup>
 // 2026-10-25: owner-only view of what visitors wrote in the public demo
-// sandboxes (one per visitor's browser, each deleted after 24h). Backed by GET /api/admin/activity
+// sandboxes (one per visitor's browser, reset after 24h; what they wrote is archived first, 2026-11-15). Backed by GET /api/admin/activity
 // (AdminController), which only ever reads the demo accounts.
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -12,6 +12,7 @@ const auth = useAuthStore()
 
 const items = ref([])
 const sandboxes = ref(0)
+const archivedCount = ref(0)   // 2026-11-15: kept from deleted copies
 const clicks = ref(null)   // 2026-11-10: test user / test therapist clicks
 const loading = ref(true)
 const error = ref(null)
@@ -29,6 +30,7 @@ async function load() {
     const { data } = await api.get('/api/admin/activity')
     items.value = data.items
     sandboxes.value = data.sandboxes
+    archivedCount.value = data.archived || 0
     clicks.value = data.clicks || null
   } catch (e) {
     error.value = e.response?.status === 404 ? 'This account is not the admin (check ADMIN_EMAIL).' : 'Could not load activity.'
@@ -72,7 +74,7 @@ onMounted(load)
         <div>
           <span class="kicker">admin</span>
           <h1>what visitors wrote</h1>
-          <p class="sub">{{ sandboxes }} active visitor sandbox{{ sandboxes === 1 ? '' : 'es' }} (each deleted after 24h) · seeded data is hidden</p>
+          <p class="sub">{{ sandboxes }} active visitor sandbox{{ sandboxes === 1 ? '' : 'es' }} · {{ archivedCount }} archived from expired copies · seeded data is hidden</p>
         </div>
         <div class="head-actions">
           <button class="ghost" @click="load" :disabled="loading">{{ loading ? 'loading…' : 'refresh' }}</button>
@@ -114,6 +116,7 @@ onMounted(load)
           <div class="card-top">
             <span class="type" :class="it.type.replace(' ', '-')">{{ it.type }}</span>
             <span class="box">{{ it.sandbox }}</span>
+            <span v-if="it.archived" class="arch" title="this visitor's 24h copy has been deleted; the text is kept here">archived</span>
             <span class="who">{{ it.author }}<template v-if="it.meta.for"> → {{ it.meta.for }}</template></span>
             <span class="when">{{ fmt(it.at) }}</span>
           </div>
@@ -178,6 +181,7 @@ button { font: inherit; cursor: pointer; }
 .type.blocked-attempt { background: #2B2F31; color: #F1F2F0; }
 .type.task, .type.session-note { background: #E9E7F1; color: #4D4670; }
 .who { font-weight: 600; }
+.arch { font-size: 11px; color: #8A8E91; border: 1px dashed #D9DBD7; padding: 1px 7px; border-radius: 6px; }
 .box { font-size: 11.5px; color: #6B6F72; background: #F1F2F0; padding: 2px 7px; border-radius: 6px; font-variant-numeric: tabular-nums; }
 .when { margin-left: auto; color: #8A8E91; }
 .body { margin: 0; font-size: 14.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }

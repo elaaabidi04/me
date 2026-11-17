@@ -69,7 +69,7 @@ async function submit() {
         </button>
         <p v-if="auth.error" class="error">{{ auth.error.email?.[0] }}</p>
         <p class="demo-note">
-          you get your own private copy — other visitors can't see what you write. it's deleted after 24h and visible to the developer, so please don't enter real personal details.
+          you get your own private copy — other visitors can't see what you write. the copy resets after 24h, but what you write is kept and visible to the developer, so please don't enter real personal details.
         </p>
         <button type="button" class="admin-link" @click="toggleAdmin">.</button>
       </div>

@@ -27,6 +27,11 @@ return [
     // it was created. `php artisan demo:prune` runs hourly.
     'sandbox_hours' => (int) env('DEMO_SANDBOX_HOURS', 24),
 
+    // 2026-11-15: what visitors wrote is archived for /admin before their
+    // copy is deleted (App\Support\DemoActivity). Days to keep it;
+    // 0 = keep forever.
+    'archive_days' => (int) env('DEMO_ARCHIVE_DAYS', 0),
+
     // New sandboxes one IP may create per day (each is ~120 seeded rows).
     // Returning visitors reuse theirs and don't count.
     // 2026-11-08: raised from 20 -- a school / office Wi-Fi is one IP for everyone on it.
